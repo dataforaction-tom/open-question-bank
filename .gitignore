@@ -1,7 +1,9 @@
-# Claude Code local/session files
+# Claude Code tooling, instructions & session files (kept out of the public repo)
+.claude/
+CLAUDE.md
 CLAUDE.local.md
+MISTAKES.md
 HANDOFF.md
-.claude/settings.local.json
 
 # Secrets & local env
 .env
