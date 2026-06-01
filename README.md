@@ -6,7 +6,7 @@ Question Bank takes a messy pool of submitted questions and produces a trustwort
 
 Open source and **local-first**: the whole system runs on a single machine with no required external dependency. A hosted instance is offered too, on the same backend.
 
-> Status: **pre-build**. The [technical specification](./question-bank-spec.md) is finalised (v0.1); the application is being planned before code is written. See [PLAN.md](./PLAN.md) and [STATE.md](./STATE.md).
+> Status: **Slice 1 built**. The [technical specification](./question-bank-spec.md) is finalised (v0.1) and the first vertical slice — Submit → Embed (pinned `nomic-embed-text`) → Dedup-at-source — runs locally with tests. Remaining slices (cluster, refine, score, compare, rank, synthesise) are next. See [PLAN.md](./PLAN.md) and [STATE.md](./STATE.md).
 
 ## The defensible core: the refinement log
 

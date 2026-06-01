@@ -13,7 +13,7 @@ stateDiagram-v2
     Testing --> Deploying: tests pass
     Deploying --> Live: deployed
 
-    note right of Planning: ← WE ARE HERE (spec done, repo set up, planning the build)
+    note right of Building: ← WE ARE HERE (Slice 1 built + tested; Slices 2-7 next)
 ```
 
 ## Component Status
@@ -24,9 +24,9 @@ stateDiagram-v2
 | Repo + Claude template | ✅ Done | Pushed to `dataforaction-tom/open-question-bank` (public) |
 | Open decisions (§15) | ✅ Done | CC0 · open+fingerprinted · pin `nomic-embed-text` (768) · rubric in `definedness-rubric.md` |
 | Embedding bake-off | ⏳ Not started | `nomic-embed-text` (768) pinned as default; bake-off confirms before final migration |
-| Next.js app + docker compose | ⏳ Not started | Ollama + Postgres/pgvector + app |
-| DB schema + migrations | ⏳ Not started | Append-only transformation tables, dataset-version aware |
-| Submit + Embed + Dedup | ⏳ Not started | Pipeline slice 1 |
+| Next.js app + docker compose | ✅ Done | Next 15 + Drizzle; `docker compose` runs db (pgvector) + ollama + app, all healthy |
+| DB schema + migrations | ✅ Done | `dataset_version` + `question`; `vector(768)` + HNSW cosine; one-active-version partial unique index; drizzle-kit migrations |
+| Submit + Embed + Dedup | ✅ Done | Slice 1 — submit→embed(pinned)→dedup-at-source; 13 unit/integration tests + Playwright e2e; endpoint hardened per review |
 | Cluster + moderation gate | ⏳ Not started | Slice 2 |
 | LLM refinement (training set) | ⏳ Not started | Slice 3 — the defensible core |
 | Definedness scoring + curation | ⏳ Not started | Slice 4 |
@@ -57,8 +57,8 @@ flowchart LR
 
 | Dependency | Status | Notes |
 |------------|--------|-------|
-| Ollama (embedding + reasoning LLM) | Not set up | Local server; embedding model pinned per dataset version (`nomic-embed-text`) |
-| Postgres + pgvector | Not set up | Single store, relational + vectors; column width **768** (nomic-embed-text dim) |
+| Ollama (embedding + reasoning LLM) | ✅ Running | Docker service; `nomic-embed-text` pulled (768-dim), pinned in `dataset_version` |
+| Postgres + pgvector | ✅ Running | `pgvector/pgvector:pg16` Docker service; `vector` extension enabled; `qb` (dev) + `qb_test` (tests) |
 | OpenRouter (optional) | Not set up | Remote reasoning for synthesis only; reintroduces per-call cost |
 | Docker / docker compose | Available locally | Orchestrates the single-machine stack |
 

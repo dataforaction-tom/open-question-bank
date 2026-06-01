@@ -26,12 +26,12 @@ Build along the pipeline spine, slice by slice, each slice runnable and tested b
 - [x] Customise tracking docs (CLAUDE.md / PLAN.md / STATE.md / README.md) from spec
 - [x] Create + push public repo `dataforaction-tom/open-question-bank`
 - [x] **Resolve the 4 open decisions** below (CC0 · open+fingerprinted · pin `nomic-embed-text` (768-dim) · rubric in `definedness-rubric.md`)
-- [ ] Plan the build: data model → migrations → pipeline slices (use plan mode + plan-reviewer) — CURRENT
+- [x] Plan the build: data model → migrations → pipeline slices (plan in `docs/superpowers/plans/`, staff-reviewed)
 - [ ] Embedding-model bake-off (`nomic-embed-text` vs `mxbai-embed-large` vs `bge-m3`) — `nomic-embed-text` pinned as default; bake-off confirms before final migration
-- [ ] Scaffold Next.js app + `docker compose` (Ollama + Postgres/pgvector)
-- [ ] DB schema + dataset-version-aware migrations (all transformation tables append-only)
-- [ ] Slice 1: Submit + Embed + Dedup-at-source ("yours or new?")
-- [ ] Slice 2: Cluster (assign-to-nearest within active version) + moderation gate
+- [x] Scaffold Next.js app + `docker compose` (Ollama + Postgres/pgvector)
+- [x] DB schema + dataset-version-aware migrations (`dataset_version`, `question`; pgvector `vector(768)` + HNSW cosine; one-active-version invariant)
+- [x] Slice 1: Submit + Embed + Dedup-at-source ("yours or new?") — full pipeline tested (13 unit/integration + e2e), endpoint hardened per review
+- [ ] Slice 2: Cluster (assign-to-nearest within active version) + moderation gate — CURRENT
 - [ ] Slice 3: LLM-assisted refinement (the logged transformation = training set)
 - [ ] Slice 4: Definedness scoring at curation + admin canonical-set curation
 - [ ] Slice 5: Campaigns + pairwise comparison (TrueSkill, adaptive pairing)
@@ -41,6 +41,11 @@ Build along the pipeline spine, slice by slice, each slice runnable and tested b
 - [ ] Cold-start: seed question sets + CSV/JSON import
 
 Markers: `[ ]` not started · `[~]` in progress (CURRENT) · `[x]` done · `[!]` blocked
+
+### Slice 1 follow-ups (deferred from review — address in/around Slice 2)
+
+- **Double embedding on decision:** `prepareSubmission` embeds, then if the submitter picks "new"/"merge" the API re-embeds the same text in `createQuestion`. Deterministic (same model/text) but doubles Ollama work — carry the vector through (opaque token) or cache it server-side when clustering lands.
+- **Dedup matches variants:** `findNearest` has no `state` filter, so a `merged_as_variant` row can surface as a candidate. Add a state filter (with a test) when Slice 2 reshapes dedup/clustering.
 
 ## Decisions Made
 
