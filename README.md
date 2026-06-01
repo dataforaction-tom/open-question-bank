@@ -51,12 +51,18 @@ A single `docker compose` stack, designed to run on one machine (target: Mac min
 
 ## Getting started
 
-Not yet runnable — the app is being scaffolded. Once it is, the flow will be roughly:
-
 ```bash
-docker compose up        # Ollama + Postgres/pgvector + app
-# pick & pin an embedding model at first boot
+docker compose up -d                      # postgres/pgvector + ollama (+ app)
+docker compose exec ollama ollama pull nomic-embed-text
+npm install
+npm run db:migrate                        # create tables
+npm run db:seed                           # pin the active dataset version
+npm run dev                               # http://localhost:3000
 ```
+
+Then open `http://localhost:3000/submit` and submit a question. Run the tests with `npm test`
+(unit + integration; integration needs the `qb_test` database — see the plan in
+`docs/superpowers/plans/`) and `npm run test:e2e`.
 
 ## Documentation
 

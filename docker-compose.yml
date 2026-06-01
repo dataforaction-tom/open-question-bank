@@ -29,6 +29,22 @@ services:
       timeout: 5s
       retries: 10
 
+  app:
+    build: .
+    environment:
+      DATABASE_URL: postgres://qb:qb@db:5432/qb
+      OLLAMA_URL: http://ollama:11434
+      EMBEDDING_MODEL: nomic-embed-text
+      EMBEDDING_DIM: "768"
+      DEDUP_THRESHOLD: "0.15"
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+
 volumes:
   qb_pgdata:
   qb_ollama:
