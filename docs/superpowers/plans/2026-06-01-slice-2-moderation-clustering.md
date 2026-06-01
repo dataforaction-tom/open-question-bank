@@ -330,15 +330,16 @@ export async function createSessionToken(ttlSeconds: number = SESSION_TTL_SECOND
   return `${payloadB64}.${sig}`
 }
 
-/** Verify a session token's signature and expiry. */
+/** Verify a session token's signature and expiry. Never throws — a missing secret or a
+ *  malformed token is treated as unauthenticated, so the middleware returns 401 instead of crashing. */
 export async function verifySessionToken(token: string | undefined): Promise<boolean> {
   if (!token) return false
   const parts = token.split('.')
   if (parts.length !== 2) return false
   const [payloadB64, sig] = parts
-  const expected = await sign(payloadB64)
-  if (!constantTimeEqual(sig, expected)) return false
   try {
+    const expected = await sign(payloadB64) // may throw if ADMIN_SESSION_SECRET is unset
+    if (!constantTimeEqual(sig, expected)) return false
     const payload = JSON.parse(new TextDecoder().decode(b64urlToBytes(payloadB64))) as { exp?: number }
     return typeof payload.exp === 'number' && payload.exp > Math.floor(Date.now() / 1000)
   } catch {
@@ -638,6 +639,8 @@ export async function assignToNearestCluster(
   return { clusterId: createdCluster.id, created: true }
 }
 ```
+
+> Type note: the `Executor` union (`typeof db | Tx`) should typecheck on the chained query-builder calls. If `npx tsc --noEmit` complains about the union on `.select(...).from(...)`, add a single cast at the call sites — `(executor as typeof db).select(...)` — rather than widening the type. Try without the cast first.
 
 - [ ] **Step 4: Run the test to verify it passes**: `npm test -- tests/integration/clustering.test.ts`
 Expected: PASS (4 tests).
