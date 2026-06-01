@@ -1,6 +1,7 @@
+import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'Question Bank',
   description: 'A collective intelligence and prioritisation tool for questions.',
 }
