@@ -7,6 +7,7 @@ export interface DatasetVersionConfig {
   embeddingModelDigest: string
   embeddingDim: number
   dedupThreshold: number
+  clusterThreshold?: number
 }
 
 /** Return the single active dataset version, or null if none has been seeded. */
@@ -38,6 +39,7 @@ export async function ensureActiveDatasetVersion(
         embeddingModelDigest: config.embeddingModelDigest,
         embeddingDim: config.embeddingDim,
         dedupThreshold: config.dedupThreshold,
+        clusterThreshold: config.clusterThreshold,
         isActive: true,
       })
       .returning()

@@ -37,6 +37,9 @@ services:
       EMBEDDING_MODEL: nomic-embed-text
       EMBEDDING_DIM: "768"
       DEDUP_THRESHOLD: "0.15"
+      CLUSTER_THRESHOLD: "0.2"
+      ADMIN_PASSWORD: admin
+      ADMIN_SESSION_SECRET: dev-only-secret-do-not-use-in-prod-0123456789
     ports:
       - "3000:3000"
     depends_on:
