@@ -27,6 +27,8 @@ export default function SubmitPage() {
         body: JSON.stringify(body),
       })
       return await res.json()
+    } catch {
+      return { error: 'Network error — please try again.' }
     } finally {
       setBusy(false)
     }

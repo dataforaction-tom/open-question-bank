@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { prepareSubmission, createQuestion, type SubmitInput } from '@/lib/submission'
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 interface RequestBody extends SubmitInput {
   // Submitter's decision after seeing candidates:
   //  - undefined → run dedup-at-source
@@ -13,11 +15,13 @@ function isValid(body: unknown): body is RequestBody {
   if (typeof body !== 'object' || body === null) return false
   const b = body as Record<string, unknown>
   if (typeof b.rawText !== 'string' || b.rawText.trim().length === 0) return false
+  if (b.rawText.trim().length > 2000) return false // questions are short; reject oversized input
   if (b.visibility !== 'anonymous' && b.visibility !== 'public') return false
   return true
 }
 
 export async function POST(request: Request) {
+  // TODO (later slice): add rate limiting / fingerprinting for this public submission surface.
   let body: unknown
   try {
     body = await request.json()
@@ -34,7 +38,7 @@ export async function POST(request: Request) {
   const input: SubmitInput = {
     rawText: body.rawText.trim(),
     visibility: body.visibility,
-    submitterRef: body.submitterRef ?? null,
+    submitterRef: typeof body.submitterRef === 'string' ? body.submitterRef : null,
   }
 
   try {
@@ -46,6 +50,9 @@ export async function POST(request: Request) {
       )
     }
     if (body.decision?.type === 'merge') {
+      if (!UUID_RE.test(body.decision.canonicalId)) {
+        return NextResponse.json({ error: 'Invalid canonicalId' }, { status: 400 })
+      }
       const variant = await createQuestion(input, { mergeInto: body.decision.canonicalId })
       return NextResponse.json(
         { status: 'merged', question: { id: variant.id, canonicalText: variant.canonicalText } },
@@ -55,7 +62,7 @@ export async function POST(request: Request) {
     const result = await prepareSubmission(input)
     return NextResponse.json(result, { status: result.status === 'created' ? 201 : 200 })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    return NextResponse.json({ error: message }, { status: 500 })
+    console.error('[POST /api/questions]', err)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
