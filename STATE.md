@@ -22,8 +22,8 @@ stateDiagram-v2
 |-----------|--------|-------|
 | Spec | ✅ Done | `question-bank-spec.md` v0.1, local-first stack finalised |
 | Repo + Claude template | ✅ Done | Pushed to `dataforaction-tom/open-question-bank` (public) |
-| Open decisions (§15) | ⏳ Not started | Licence, judging auth, embedding model, rubric wording |
-| Embedding bake-off | ⏳ Not started | Fixes pgvector dimensionality — gates first migration |
+| Open decisions (§15) | ✅ Done | CC0 · open+fingerprinted · pin `nomic-embed-text` (768) · rubric in `definedness-rubric.md` |
+| Embedding bake-off | ⏳ Not started | `nomic-embed-text` (768) pinned as default; bake-off confirms before final migration |
 | Next.js app + docker compose | ⏳ Not started | Ollama + Postgres/pgvector + app |
 | DB schema + migrations | ⏳ Not started | Append-only transformation tables, dataset-version aware |
 | Submit + Embed + Dedup | ⏳ Not started | Pipeline slice 1 |
@@ -57,8 +57,8 @@ flowchart LR
 
 | Dependency | Status | Notes |
 |------------|--------|-------|
-| Ollama (embedding + reasoning LLM) | Not set up | Local server; embedding model pinned per dataset version |
-| Postgres + pgvector | Not set up | Single store, relational + vectors; column width set by embedding dim |
+| Ollama (embedding + reasoning LLM) | Not set up | Local server; embedding model pinned per dataset version (`nomic-embed-text`) |
+| Postgres + pgvector | Not set up | Single store, relational + vectors; column width **768** (nomic-embed-text dim) |
 | OpenRouter (optional) | Not set up | Remote reasoning for synthesis only; reintroduces per-call cost |
 | Docker / docker compose | Available locally | Orchestrates the single-machine stack |
 

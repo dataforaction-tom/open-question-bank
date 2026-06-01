@@ -61,16 +61,19 @@ docker compose up        # Ollama + Postgres/pgvector + app
 ## Documentation
 
 - [`question-bank-spec.md`](./question-bank-spec.md) — full technical specification (source of truth)
+- [`definedness-rubric.md`](./definedness-rubric.md) — the five definedness criteria, defined (open training-set docs)
 - [`PLAN.md`](./PLAN.md) — objective, approach, task list, decisions, open questions
 - [`STATE.md`](./STATE.md) — where things stand; component status; data flow
 
-## Open decisions before launch
+## Launch decisions (resolved)
 
-1. **Export licence** — CC0 vs ODbL (recommendation: CC0).
-2. **Default judging auth** — open + fingerprinted vs auth-required, as the per-campaign default.
-3. **Embedding model to pin** — chosen by a local bake-off; its dimensionality fixes the pgvector column width.
-4. **Definedness rubric wording** — final definitions of the five criteria (specific, answerable, scoped, non-leading, single-barrelled).
+The four open decisions from the spec are settled (2026-06-01):
+
+1. **Export licence** — **CC0** (maximally open, frictionless downstream analysis).
+2. **Default judging auth** — **open + fingerprinted** (per-campaign override to auth-required retained).
+3. **Pinned embedding model** — **`nomic-embed-text`** (768-dim, fixing the pgvector column width). A local bake-off vs `mxbai-embed-large` / `bge-m3` still confirms before the first real migration.
+4. **Definedness rubric** — five criteria defined in [`definedness-rubric.md`](./definedness-rubric.md): specific, answerable, scoped, non-leading, single-barrelled.
 
 ## Licence
 
-To be decided before launch (see above). Data export licence is tracked separately from the code licence.
+Data export is licensed **CC0** (tracked separately from the code licence, which is decided before launch).
