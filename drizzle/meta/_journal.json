@@ -8,6 +8,13 @@
       "when": 1780322013411,
       "tag": "0000_shiny_post",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1780335094416,
+      "tag": "0001_jittery_whistler",
+      "breakpoints": true
     }
   ]
 }

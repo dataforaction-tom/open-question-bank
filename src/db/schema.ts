@@ -32,6 +32,8 @@ export const questionStateEnum = pgEnum('question_state', [
   'archived',
 ])
 
+export const moderationActionEnum = pgEnum('moderation_action', ['approve', 'reject'])
+
 // One row per pinned-embedding configuration. Changing the embedding model mints a NEW row
 // (and, later, a re-embed migration). Exactly one row is active at a time (enforced below).
 export const datasetVersion = pgTable(
@@ -42,6 +44,7 @@ export const datasetVersion = pgTable(
     embeddingModelDigest: text('embedding_model_digest').notNull(),
     embeddingDim: integer('embedding_dim').notNull(),
     dedupThreshold: doublePrecision('dedup_threshold').notNull().default(0.15),
+    clusterThreshold: doublePrecision('cluster_threshold').notNull().default(0.2),
     isActive: boolean('is_active').notNull().default(true),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -70,7 +73,7 @@ export const question = pgTable(
     state: questionStateEnum('state').notNull().default('submitted'),
     tags: text('tags').array(),
     theme: text('theme'),
-    clusterId: uuid('cluster_id'), // FK constraint added in Slice 2 when the cluster table exists
+    clusterId: uuid('cluster_id').references((): AnyPgColumn => cluster.id),
     canonicalOf: uuid('canonical_of').references((): AnyPgColumn => question.id),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -81,6 +84,39 @@ export const question = pgTable(
   ],
 )
 
+export const cluster = pgTable(
+  'cluster',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    datasetVersionId: integer('dataset_version_id')
+      .notNull()
+      .references(() => datasetVersion.id),
+    representativeQuestionId: uuid('representative_question_id')
+      .notNull()
+      .references((): AnyPgColumn => question.id),
+    thresholdUsed: doublePrecision('threshold_used').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('cluster_dataset_version_idx').on(table.datasetVersionId)],
+)
+
+export const moderationEvent = pgTable(
+  'moderation_event',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    questionId: uuid('question_id')
+      .notNull()
+      .references(() => question.id),
+    action: moderationActionEnum('action').notNull(),
+    actorRef: text('actor_ref').notNull(),
+    reason: text('reason'),
+    timestamp: timestamp('timestamp', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('moderation_event_question_idx').on(table.questionId)],
+)
+
 export type Question = typeof question.$inferSelect
 export type NewQuestion = typeof question.$inferInsert
 export type DatasetVersion = typeof datasetVersion.$inferSelect
+export type Cluster = typeof cluster.$inferSelect
+export type ModerationEvent = typeof moderationEvent.$inferSelect
