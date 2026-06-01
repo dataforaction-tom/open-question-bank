@@ -9,5 +9,8 @@ export default defineConfig({
     environment: 'node',
     include: ['tests/**/*.test.ts'],
     setupFiles: ['tests/setup-integration.ts'],
+    // Integration tests share a single `qb_test` database and reset it in beforeEach.
+    // Run test files sequentially so their TRUNCATE/INSERT setup can't race across files.
+    fileParallelism: false,
   },
 })
