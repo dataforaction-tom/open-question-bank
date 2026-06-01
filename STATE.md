@@ -27,7 +27,7 @@ stateDiagram-v2
 | Next.js app + docker compose | ✅ Done | Next 15 + Drizzle; `docker compose` runs db (pgvector) + ollama + app, all healthy |
 | DB schema + migrations | ✅ Done | `dataset_version` + `question`; `vector(768)` + HNSW cosine; one-active-version partial unique index; drizzle-kit migrations |
 | Submit + Embed + Dedup | ✅ Done | Slice 1 — submit→embed(pinned)→dedup-at-source; 13 unit/integration tests + Playwright e2e; endpoint hardened per review |
-| Cluster + moderation gate | ⏳ Not started | Slice 2 |
+| Cluster + moderation gate | ✅ Done | Slice 2 — admin auth (signed-cookie), manual moderation queue, assign-to-nearest clustering, append-only `moderation_event` |
 | LLM refinement (training set) | ⏳ Not started | Slice 3 — the defensible core |
 | Definedness scoring + curation | ⏳ Not started | Slice 4 |
 | Campaigns + TrueSkill comparison | ⏳ Not started | Slice 5 |

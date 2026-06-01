@@ -31,8 +31,8 @@ Build along the pipeline spine, slice by slice, each slice runnable and tested b
 - [x] Scaffold Next.js app + `docker compose` (Ollama + Postgres/pgvector)
 - [x] DB schema + dataset-version-aware migrations (`dataset_version`, `question`; pgvector `vector(768)` + HNSW cosine; one-active-version invariant)
 - [x] Slice 1: Submit + Embed + Dedup-at-source ("yours or new?") — full pipeline tested (13 unit/integration + e2e), endpoint hardened per review
-- [ ] Slice 2: Cluster (assign-to-nearest within active version) + moderation gate — CURRENT
-- [ ] Slice 3: LLM-assisted refinement (the logged transformation = training set)
+- [x] Slice 2: Cluster (assign-to-nearest within active version) + moderation gate — admin auth (signed-cookie session), manual moderation queue, assign-to-nearest clustering, append-only `moderation_event`; 27 tests + e2e
+- [ ] Slice 3: LLM-assisted refinement (the logged transformation = training set) — CURRENT
 - [ ] Slice 4: Definedness scoring at curation + admin canonical-set curation
 - [ ] Slice 5: Campaigns + pairwise comparison (TrueSkill, adaptive pairing)
 - [ ] Slice 6: Ranked agenda + score-evidence transparency views
