@@ -23,6 +23,9 @@ npm-debug.log*
 # Next.js auto-generated type reference (regenerated on every build)
 next-env.d.ts
 
+# TypeScript incremental build info
+*.tsbuildinfo
+
 # OS
 .DS_Store
 Thumbs.db
