@@ -26,6 +26,11 @@ next-env.d.ts
 # TypeScript incremental build info
 *.tsbuildinfo
 
+# Playwright
+test-results/
+playwright-report/
+.playwright/
+
 # OS
 .DS_Store
 Thumbs.db
