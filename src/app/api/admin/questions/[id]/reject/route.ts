@@ -11,7 +11,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     // no body is fine
   }
   try {
-    await rejectQuestion(id, 'admin', reason)
+    await rejectQuestion(id, 'admin', reason) // single shared admin account this slice; becomes a real identity when multi-admin auth lands
     return NextResponse.json({ status: 'rejected' })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'

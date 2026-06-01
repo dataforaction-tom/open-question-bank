@@ -79,6 +79,28 @@ describe('approveQuestion', () => {
     const events = await db.select().from(moderationEvent).where(eq(moderationEvent.questionId, id))
     expect(events).toHaveLength(1)
   })
+
+  it('rolls back the approval (event + state) when the question has no embedding', async () => {
+    const [row] = await db
+      .insert(question)
+      .values({
+        rawText: 'no-embedding',
+        canonicalText: 'no-embedding',
+        embedding: null,
+        embeddingModelVersion: 'test@sha256:test',
+        datasetVersionId: versionId,
+        visibility: 'public',
+        state: 'submitted',
+      })
+      .returning()
+
+    await expect(approveQuestion(row.id, 'admin')).rejects.toThrow(/no embedding/)
+
+    const [q] = await db.select().from(question).where(eq(question.id, row.id))
+    expect(q.state).toBe('submitted') // rolled back, not 'clustered'
+    const events = await db.select().from(moderationEvent).where(eq(moderationEvent.questionId, row.id))
+    expect(events).toHaveLength(0) // event insert rolled back too
+  })
 })
 
 describe('rejectQuestion', () => {

@@ -4,7 +4,7 @@ import { approveQuestion } from '@/lib/moderation'
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   try {
-    const result = await approveQuestion(id, 'admin')
+    const result = await approveQuestion(id, 'admin') // single shared admin account this slice; becomes a real identity when multi-admin auth lands
     return NextResponse.json({ status: 'clustered', ...result })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'

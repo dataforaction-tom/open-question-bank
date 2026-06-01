@@ -4,8 +4,13 @@ import { SESSION_COOKIE, verifySessionToken } from '@/lib/admin-auth'
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
-  // Login endpoints must be reachable without a session.
-  if (pathname === '/admin/login' || pathname === '/api/admin/login') {
+  // Login + logout must be reachable without a valid session. (Next.js normalizes a
+  // trailing slash to the canonical path before middleware runs, so exact-equality is safe.)
+  if (
+    pathname === '/admin/login' ||
+    pathname === '/api/admin/login' ||
+    pathname === '/api/admin/logout'
+  ) {
     return NextResponse.next()
   }
 

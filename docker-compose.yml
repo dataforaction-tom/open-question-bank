@@ -38,8 +38,8 @@ services:
       EMBEDDING_DIM: "768"
       DEDUP_THRESHOLD: "0.15"
       CLUSTER_THRESHOLD: "0.2"
-      ADMIN_PASSWORD: admin
-      ADMIN_SESSION_SECRET: dev-only-secret-do-not-use-in-prod-0123456789
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD must be set in .env}
+      ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET:?ADMIN_SESSION_SECRET must be set in .env}
     ports:
       - "3000:3000"
     depends_on:
