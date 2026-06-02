@@ -236,7 +236,7 @@ describe('OllamaChatProvider', () => {
     expect(init.headers.Authorization).toBeUndefined()
   })
 
-  it('sends a bearer token when an apiKey is set (Ollama Cloud)', async () => {
+  it('sends a bearer token and records the model id as version (Ollama Cloud — no tags lookup)', async () => {
     const fetchMock = vi.fn().mockResolvedValue(chatResponse(VALID))
     vi.stubGlobal('fetch', fetchMock)
 
@@ -245,9 +245,12 @@ describe('OllamaChatProvider', () => {
       model: 'qwen2.5:7b',
       apiKey: 'secret',
     })
-    await provider.refine('How do we fix education?')
+    const result = await provider.refine('How do we fix education?')
 
     expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe('Bearer secret')
+    // Cloud skips /api/tags entirely and records the model id as the version.
+    expect(fetchMock.mock.calls.every((c) => !String(c[0]).endsWith('/api/tags'))).toBe(true)
+    expect(result.modelVersion).toBe('qwen2.5:7b')
   })
 
   it('falls back to the model id when the digest cannot be resolved', async () => {
@@ -284,7 +287,6 @@ Expected: FAIL — `Cannot find module '@/lib/llm'`.
 
 ```typescript
 import { z } from 'zod'
-import { getModelDigest } from '@/lib/ollama'
 
 /** The five definedness criteria (mirrors definedness-rubric.md). */
 export const CRITERIA = ['specific', 'answerable', 'scoped', 'non-leading', 'single-barrelled'] as const
@@ -349,19 +351,24 @@ abstract class ChatProvider implements RefinementProvider {
 
   async refine(canonicalText: string): Promise<RefinementSuggestion> {
     const prompt = buildRefinementPrompt(canonicalText)
+    let parsed: z.infer<typeof refinementSuggestionSchema> | undefined
     let lastErr: unknown
-    for (let attempt = 0; attempt < 2; attempt++) {
+    // Retry once, but ONLY on a transport or output-validation failure (e.g. non-JSON output).
+    // Provenance resolution is deliberately outside this loop so a digest hiccup can't trigger
+    // a wasteful second LLM call.
+    for (let attempt = 0; attempt < 2 && !parsed; attempt++) {
       try {
-        const raw = await this.callChat(prompt)
-        const parsed = refinementSuggestionSchema.parse(raw)
-        const modelVersion = await this.resolveModelVersion()
-        return { ...parsed, model: this.model, modelVersion }
+        parsed = refinementSuggestionSchema.parse(await this.callChat(prompt))
       } catch (err) {
         lastErr = err
       }
     }
-    const message = lastErr instanceof Error ? lastErr.message : String(lastErr)
-    throw new ProviderError(`Refinement failed: ${message}`)
+    if (!parsed) {
+      const message = lastErr instanceof Error ? lastErr.message : String(lastErr)
+      throw new ProviderError(`Refinement failed: ${message}`)
+    }
+    const modelVersion = await this.resolveModelVersion() // never throws — falls back to the model id
+    return { ...parsed, model: this.model, modelVersion }
   }
 }
 
@@ -396,11 +403,18 @@ export class OllamaChatProvider extends ChatProvider {
   }
 
   protected async resolveModelVersion(): Promise<string> {
+    // Cloud: no reliable per-account digest from /api/tags — record the model id (spec §3 fallback).
+    if (this.apiKey) return this.model
+    // Local: resolve the content digest from THIS server's /api/tags (not the shared OLLAMA_URL that
+    // `getModelDigest` reads — that would mis-record the digest for a non-default base URL).
     try {
-      // getModelDigest reads OLLAMA_URL; for the common local case that is this.baseUrl.
-      return await getModelDigest(this.model)
+      const res = await fetch(`${this.baseUrl}/api/tags`)
+      if (!res.ok) return this.model
+      const data = (await res.json()) as { models: { name: string; digest: string }[] }
+      const match = data.models.find((m) => m.name === this.model || m.name === `${this.model}:latest`)
+      return match?.digest ?? this.model
     } catch {
-      return this.model // cloud / unresolvable digest → record the model id
+      return this.model
     }
   }
 }
@@ -716,6 +730,7 @@ export async function recordRefinement(input: RecordRefinementInput): Promise<Re
         after,
         criteriaApplied: input.criteriaApplied,
         critique: input.critique,
+        // Always 'llm' this slice; the pure-human (suggested_by='human') path is deferred (design §2).
         suggestedBy: 'llm',
         model: input.model,
         modelVersion: input.modelVersion,
@@ -732,7 +747,7 @@ export async function recordRefinement(input: RecordRefinementInput): Promise<Re
   })
 }
 
-/** Refinement history for a question, newest first (transparency view). */
+/** Refinement history for a question, oldest first (chronological lineage; transparency view). */
 export async function listRefinements(questionId: string): Promise<Refinement[]> {
   return db
     .select()
@@ -942,17 +957,31 @@ interface Suggestion {
   modelVersion: string
 }
 
+interface RefinementRow {
+  id: string
+  action: 'accept' | 'reject' | 'edit'
+  before: string
+  after: string | null
+  timestamp: string
+}
+
 export default function RefinementPage() {
   const [questions, setQuestions] = useState<Clustered[]>([])
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const [active, setActive] = useState<{ id: string; before: string; suggestion: Suggestion } | null>(null)
   const [editedText, setEditedText] = useState('')
+  const [history, setHistory] = useState<RefinementRow[]>([])
 
   const load = useCallback(async () => {
     const res = await fetch('/api/admin/questions?state=clustered')
     if (res.ok) setQuestions((await res.json()).questions)
   }, [])
+
+  async function loadHistory(id: string) {
+    const res = await fetch(`/api/admin/questions/${id}/refinements`)
+    setHistory(res.ok ? (await res.json()).refinements : [])
+  }
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -969,6 +998,7 @@ export default function RefinementPage() {
         setActive({ id, before: data.before, suggestion: data.suggestion })
         setEditedText(data.suggestion.suggestedText)
         setMessage('')
+        loadHistory(id)
       } else {
         setMessage(data.error ?? 'Error')
       }
@@ -1050,6 +1080,18 @@ export default function RefinementPage() {
           <button type="button" onClick={() => setActive(null)} disabled={busy}>
             Cancel
           </button>
+          {history.length > 0 && (
+            <details style={{ marginTop: '1rem' }}>
+              <summary>Refinement history ({history.length})</summary>
+              <ul>
+                {history.map((h) => (
+                  <li key={h.id}>
+                    [{h.action}] {h.before} → {h.after ?? '(rejected — unchanged)'}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
         </section>
       ) : questions.length === 0 ? (
         <p>No clustered questions to refine.</p>
@@ -1116,7 +1158,10 @@ test('admin refines a clustered question (suggest → edit → accept)', async (
     data: { rawText: unique, visibility: 'public', decision: { type: 'new' } },
   })
   expect(created.ok()).toBeTruthy()
-  const { id } = await created.json()
+  // Public submit returns { status, question: { id, canonicalText } } (src/app/api/questions/route.ts).
+  const {
+    question: { id },
+  } = await created.json()
 
   // Log in (sets the admin session cookie shared by page + request).
   await page.goto('/admin/login')
@@ -1149,17 +1194,12 @@ test('admin refines a clustered question (suggest → edit → accept)', async (
 })
 ```
 
-- [ ] **Step 3: Confirm the public submit API returns the new question id**
-
-Run: `grep -n "id" src/app/api/questions/route.ts`
-Expected: the POST response includes the created question's `id`. If it does **not**, adjust the test to fetch the id via `GET /api/admin/questions?state=clustered` after approval (match on `canonicalText === unique`) instead of `created.json()`.
-
-- [ ] **Step 4: Run the e2e test**
+- [ ] **Step 3: Run the e2e test**
 
 Run: `npm run test:e2e -- admin-refinement`
 Expected: PASS (Playwright starts its own server on :3100 with the mock provider).
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
 git add playwright.config.ts tests/e2e/admin-refinement.spec.ts
@@ -1215,7 +1255,7 @@ git commit -m "docs: mark Slice 3 (LLM-assisted refinement) complete"
 - No re-embedding, no state change → Task 4 (`recordRefinement` touches only `canonical_text`); asserted in Task 4 test (`state` unchanged). ✓
 - Append-only `refinement` table, migration 0002 → Task 2. ✓
 - API routes (suggest, refine, history) → Task 6; clustered list → Task 5. ✓
-- Admin UI → Task 7. ✓
+- Admin UI (incl. per-question refinement history view) → Task 7. ✓
 - Error handling (502 LLM, 409 ineligible, 404 not-found, transactional) → Tasks 4 & 6. ✓
 - Trust note (client-carried proposal) → carried to HANDOFF in Task 9. ✓
 - Testing unit/integration/e2e → Tasks 3, 4, 8. ✓
@@ -1224,6 +1264,17 @@ git commit -m "docs: mark Slice 3 (LLM-assisted refinement) complete"
 **Placeholder scan:** No TBD/TODO; every code step shows full code; every command states expected output. ✓ (One conditional in Task 8 Step 3 — explicit fallback instructions, not a placeholder.)
 
 **Type consistency:** `RefinementSuggestion`, `RefinementProvider`, `recordRefinement`/`RecordRefinementInput`, `suggestRefinement`, `listClustered`, `listRefinements`, `NotFoundError`/`IneligibleError`, `ProviderError` are defined once and used consistently across tasks. `critique` shape `{ criterion; verdict: 'pass'|'fail'; note }` matches between schema (Task 2), llm.ts (Task 3), refinement.ts (Task 4), and routes (Task 6). ✓
+
+## Plan-review revisions (2026-06-02)
+
+Applied after a staff-engineer plan review:
+- **Provider digest (blocking):** `OllamaChatProvider.resolveModelVersion` now reads `/api/tags` from its own `baseUrl` (not the shared `OLLAMA_URL` that `getModelDigest` uses) and skips the tags lookup entirely for Ollama Cloud (records the model id) — prevents a wrong/poisoned `model_version` in the training set. `getModelDigest` import dropped from `llm.ts`.
+- **Retry loop (blocking):** provenance resolution moved outside the retry loop so a digest hiccup can't trigger a second LLM call; retry now fires only on transport/validation failure.
+- **E2e id (blocking):** test reads `{ question: { id } }` from the public submit response (confirmed shape), not `{ id }`; removed the ambiguous verification step.
+- **History order:** `listRefinements` comment now matches the `asc` (oldest-first) order.
+- **History UI:** the `/admin/refinement` page now renders per-question refinement history (spec §2/§5), not just the API.
+- **Deferred-path comment:** `suggestedBy: 'llm'` annotated with a pointer to the deferred human path.
+- Truncate order (per-statement `CASCADE`, `refinement` first) is already FK-safe — left as is. The copied `eslint-disable` comment is kept to match the proven-passing moderation page.
 
 ## Prerequisite (environment)
 
