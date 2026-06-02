@@ -6,6 +6,7 @@ import {
   uuid,
   text,
   integer,
+  jsonb,
   doublePrecision,
   boolean,
   timestamp,
@@ -33,6 +34,9 @@ export const questionStateEnum = pgEnum('question_state', [
 ])
 
 export const moderationActionEnum = pgEnum('moderation_action', ['approve', 'reject'])
+
+export const refinementSuggestedByEnum = pgEnum('refinement_suggested_by', ['llm', 'human'])
+export const refinementActionEnum = pgEnum('refinement_action', ['accept', 'reject', 'edit'])
 
 // One row per pinned-embedding configuration. Changing the embedding model mints a NEW row
 // (and, later, a re-embed migration). Exactly one row is active at a time (enforced below).
@@ -115,8 +119,37 @@ export const moderationEvent = pgTable(
   (table) => [index('moderation_event_question_idx').on(table.questionId)],
 )
 
+// Append-only training set: every LLM-assisted improvement to a question (spec §4).
+// Rows are never mutated — corrections are new rows. canonical_text on `question` is the
+// only thing an accepted/edited refinement updates. Embeddings are NOT touched (spec §8).
+export const refinement = pgTable(
+  'refinement',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    questionId: uuid('question_id')
+      .notNull()
+      .references(() => question.id),
+    before: text('before').notNull(), // canonical_text at suggestion time
+    llmSuggestedText: text('llm_suggested_text'), // the model's proposal (null for pure-human)
+    after: text('after'), // text actually applied; null on reject
+    criteriaApplied: text('criteria_applied').array(),
+    critique:
+      jsonb('critique').$type<{ criterion: string; verdict: 'pass' | 'fail'; note: string }[]>(),
+    suggestedBy: refinementSuggestedByEnum('suggested_by').notNull(),
+    model: text('model'),
+    modelVersion: text('model_version'),
+    action: refinementActionEnum('action').notNull(),
+    actorRef: text('actor_ref').notNull(),
+    rationale: text('rationale'),
+    timestamp: timestamp('timestamp', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('refinement_question_idx').on(table.questionId)],
+)
+
 export type Question = typeof question.$inferSelect
 export type NewQuestion = typeof question.$inferInsert
 export type DatasetVersion = typeof datasetVersion.$inferSelect
 export type Cluster = typeof cluster.$inferSelect
 export type ModerationEvent = typeof moderationEvent.$inferSelect
+export type Refinement = typeof refinement.$inferSelect
+export type NewRefinement = typeof refinement.$inferInsert

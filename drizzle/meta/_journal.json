@@ -15,6 +15,13 @@
       "when": 1780335094416,
       "tag": "0001_jittery_whistler",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780432363118,
+      "tag": "0002_fluffy_norman_osborn",
+      "breakpoints": true
     }
   ]
 }
