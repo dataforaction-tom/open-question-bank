@@ -6,6 +6,7 @@ import type { RefinementProvider, RefinementSuggestion } from '@/lib/llm'
 import {
   IneligibleError,
   listClustered,
+  NotFoundError,
   recordRefinement,
   suggestRefinement,
 } from '@/lib/refinement'
@@ -81,6 +82,12 @@ describe('suggestRefinement', () => {
     const id = await insert('pending', 'submitted')
     await expect(suggestRefinement(id, stubProvider)).rejects.toBeInstanceOf(IneligibleError)
   })
+
+  it('throws NotFoundError for a missing question', async () => {
+    await expect(
+      suggestRefinement('00000000-0000-0000-0000-000000000000', stubProvider),
+    ).rejects.toBeInstanceOf(NotFoundError)
+  })
 })
 
 describe('recordRefinement', () => {
@@ -103,6 +110,7 @@ describe('recordRefinement', () => {
     const [q] = await db.select().from(question).where(eq(question.id, id))
     expect(q.canonicalText).toBe('refined text')
     expect(q.state).toBe('clustered') // unchanged
+    expect(q.embedding).toEqual(pad([1, 0, 0])) // pinned embedding must never change on refinement
   })
 
   it('edit: preserves both the proposal and the human-final text', async () => {
@@ -117,6 +125,7 @@ describe('recordRefinement', () => {
     expect(row.after).toBe('human-corrected text')
     const [q] = await db.select().from(question).where(eq(question.id, id))
     expect(q.canonicalText).toBe('human-corrected text')
+    expect(q.embedding).toEqual(pad([1, 0, 0])) // pinned embedding must never change on refinement
   })
 
   it('reject: writes a row with null after and leaves canonical_text unchanged', async () => {
@@ -132,5 +141,16 @@ describe('recordRefinement', () => {
     await expect(
       recordRefinement({ ...base, questionId: id, action: 'accept', finalText: 'x' }),
     ).rejects.toBeInstanceOf(IneligibleError)
+  })
+
+  it('throws NotFoundError for a missing question', async () => {
+    await expect(
+      recordRefinement({
+        ...base,
+        questionId: '00000000-0000-0000-0000-000000000000',
+        action: 'accept',
+        finalText: 'x',
+      }),
+    ).rejects.toBeInstanceOf(NotFoundError)
   })
 })

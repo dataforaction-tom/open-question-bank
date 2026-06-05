@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   buildRefinementPrompt,
   OllamaChatProvider,
+  OpenRouterProvider,
   ProviderError,
   refinementSuggestionSchema,
 } from '@/lib/llm'
@@ -105,5 +106,31 @@ describe('OllamaChatProvider', () => {
     await expect(provider.refine('x')).rejects.toBeInstanceOf(ProviderError)
     // 2 attempts, each a single /api/chat call (digest never reached)
     expect(fetchMock.mock.calls.filter((c) => String(c[0]).endsWith('/api/chat'))).toHaveLength(2)
+  })
+})
+
+describe('OpenRouterProvider', () => {
+  it('posts to /chat/completions with bearer auth and records the model id as version', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(VALID) } }] }), {
+        status: 200,
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const provider = new OpenRouterProvider({
+      baseUrl: 'https://openrouter.ai/api/v1',
+      model: 'openai/gpt-4o-mini',
+      apiKey: 'or-key',
+    })
+    const result = await provider.refine('How do we fix education?')
+
+    expect(result.suggestedText).toBe(VALID.suggestedText)
+    expect(result.modelVersion).toBe('openai/gpt-4o-mini')
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(String(url)).toMatch(/\/chat\/completions$/)
+    expect(init.headers.Authorization).toBe('Bearer or-key')
+    // OpenRouter never calls /api/tags.
+    expect(fetchMock.mock.calls.every((c) => !String(c[0]).endsWith('/api/tags'))).toBe(true)
   })
 })

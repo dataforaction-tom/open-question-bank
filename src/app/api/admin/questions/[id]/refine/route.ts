@@ -19,6 +19,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (typeof body.before !== 'string') {
     return NextResponse.json({ error: 'before is required' }, { status: 400 })
   }
+  if ((action === 'accept' || action === 'edit') && typeof body.finalText !== 'string') {
+    return NextResponse.json({ error: 'finalText is required for accept/edit' }, { status: 400 })
+  }
 
   try {
     const row = await recordRefinement({
