@@ -1,6 +1,6 @@
 # State
 
-> Last updated: 2026-06-01
+> Last updated: 2026-06-05
 
 ## System State Diagram
 
@@ -13,7 +13,7 @@ stateDiagram-v2
     Testing --> Deploying: tests pass
     Deploying --> Live: deployed
 
-    note right of Building: ← WE ARE HERE (Slice 1 built + tested; Slices 2-7 next)
+    note right of Building: ← WE ARE HERE (Slices 1-3 built + tested; Slices 4-7 next)
 ```
 
 ## Component Status
@@ -28,7 +28,7 @@ stateDiagram-v2
 | DB schema + migrations | ✅ Done | `dataset_version` + `question`; `vector(768)` + HNSW cosine; one-active-version partial unique index; drizzle-kit migrations |
 | Submit + Embed + Dedup | ✅ Done | Slice 1 — submit→embed(pinned)→dedup-at-source; 13 unit/integration tests + Playwright e2e; endpoint hardened per review |
 | Cluster + moderation gate | ✅ Done | Slice 2 — admin auth (signed-cookie), manual moderation queue, assign-to-nearest clustering, append-only `moderation_event` |
-| LLM refinement (training set) | ⏳ Not started | Slice 3 — the defensible core |
+| LLM refinement (training set) | ✅ Done | Slice 3 — pluggable provider (local Ollama / Ollama Cloud / OpenRouter), append-only `refinement` log, admin refine UI (suggest → accept/edit/reject) + per-question history; no re-embedding, no state change |
 | Definedness scoring + curation | ⏳ Not started | Slice 4 |
 | Campaigns + TrueSkill comparison | ⏳ Not started | Slice 5 |
 | Ranked agenda + evidence views | ⏳ Not started | Slice 6 |
@@ -57,7 +57,7 @@ flowchart LR
 
 | Dependency | Status | Notes |
 |------------|--------|-------|
-| Ollama (embedding + reasoning LLM) | ✅ Running | Docker service; `nomic-embed-text` pulled (768-dim), pinned in `dataset_version` |
+| Ollama (embedding + reasoning LLM) | ✅ Running | Docker service; `nomic-embed-text` pulled (768-dim), pinned in `dataset_version`. Reasoning default `qwen2.5:7b` is configured but **not pulled** — `ollama pull qwen2.5:7b` needed before the live refine path (tests use a `mock` provider) |
 | Postgres + pgvector | ✅ Running | `pgvector/pgvector:pg16` Docker service; `vector` extension enabled; `qb` (dev) + `qb_test` (tests) |
 | OpenRouter (optional) | Not set up | Remote reasoning for synthesis only; reintroduces per-call cost |
 | Docker / docker compose | Available locally | Orchestrates the single-machine stack |

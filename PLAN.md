@@ -32,8 +32,8 @@ Build along the pipeline spine, slice by slice, each slice runnable and tested b
 - [x] DB schema + dataset-version-aware migrations (`dataset_version`, `question`; pgvector `vector(768)` + HNSW cosine; one-active-version invariant)
 - [x] Slice 1: Submit + Embed + Dedup-at-source ("yours or new?") — full pipeline tested (13 unit/integration + e2e), endpoint hardened per review
 - [x] Slice 2: Cluster (assign-to-nearest within active version) + moderation gate — admin auth (signed-cookie session), manual moderation queue, assign-to-nearest clustering, append-only `moderation_event`; 27 tests + e2e
-- [ ] Slice 3: LLM-assisted refinement (the logged transformation = training set) — CURRENT
-- [ ] Slice 4: Definedness scoring at curation + admin canonical-set curation
+- [x] Slice 3: LLM-assisted refinement (the logged transformation = training set) — pluggable reasoning provider (local Ollama / Ollama Cloud / OpenRouter), append-only `refinement` log, admin refine UI (suggest → accept/edit/reject) with per-question history; no re-embedding, no state change; 45 unit/integration + 3 e2e green
+- [ ] Slice 4: Definedness scoring at curation + admin canonical-set curation — CURRENT
 - [ ] Slice 5: Campaigns + pairwise comparison (TrueSkill, adaptive pairing)
 - [ ] Slice 6: Ranked agenda + score-evidence transparency views
 - [ ] Slice 7: Synthesis (LLM proposes, human endorses, lineage preserved)
@@ -46,6 +46,13 @@ Markers: `[ ]` not started · `[~]` in progress (CURRENT) · `[x]` done · `[!]`
 
 - **Double embedding on decision:** `prepareSubmission` embeds, then if the submitter picks "new"/"merge" the API re-embeds the same text in `createQuestion`. Deterministic (same model/text) but doubles Ollama work — carry the vector through (opaque token) or cache it server-side when clustering lands.
 - **Dedup matches variants:** `findNearest` has no `state` filter, so a `merged_as_variant` row can surface as a candidate. Add a state filter (with a test) when Slice 2 reshapes dedup/clustering.
+
+### Slice 3 follow-ups (deferred from review)
+
+- **Client-carried `before` + `llm_suggested_text`:** the decision call trusts both from the client (server doesn't re-fetch `canonical_text` to cross-check). Fine for the single trusted local admin; for the hosted/multi-user instance, persist the suggestion server-side (short-lived `proposed` artifact keyed by id) so the recorded values are provably the server's. (design §8)
+- **Reasoning model not pulled:** default `qwen2.5:7b` is configured but **not** pulled into Ollama — tests use a `mock` provider. `ollama pull qwen2.5:7b` is required before the live refine path works in dev.
+- **Live provider paths untested:** Ollama Cloud + OpenRouter are unit-tested with mocked `fetch` only; no live integration test. OpenRouter/Cloud `getProvider` does not fail fast on a missing API key (surfaces as a 502 on first call).
+- **Pure-human refinement deferred:** `suggested_by='human'` (a from-scratch human edit with no LLM proposal) is reserved in the schema but not built; the edit path only captures human correction of an LLM suggestion.
 
 ## Decisions Made
 

@@ -126,7 +126,7 @@ The proposal and the decision are two HTTP calls but one logical transformation,
 
 ## 8. Trust note (follow-up, not blocking)
 
-The client carries `llm_suggested_text` back on the decision call, so a tampering client could misrecord what the LLM actually proposed. This is acceptable for the single trusted local admin. For the hosted/multi-user instance, the suggestion should be persisted server-side (e.g. a short-lived `proposed` artifact keyed by id) so the recorded proposal is provably the model's output. Tracked as a deferred follow-up.
+The client carries both `before` and `llm_suggested_text` back on the decision call, so a tampering client could misrecord either what the question said before or what the LLM actually proposed (the server does not re-fetch `canonical_text` on the decision call to cross-check `before`). This is acceptable for the single trusted local admin. For the hosted/multi-user instance, the suggestion should be persisted server-side (e.g. a short-lived `proposed` artifact keyed by id) so the recorded `before` + proposal are provably the server's own values. Tracked as a deferred follow-up.
 
 ## 9. Testing
 
