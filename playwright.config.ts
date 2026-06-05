@@ -7,7 +7,7 @@ export default defineConfig({
   testDir: './tests/e2e',
   use: { baseURL: `http://localhost:${PORT}` },
   webServer: {
-    command: `PORT=${PORT} npm run dev`,
+    command: `PORT=${PORT} REASONING_PROVIDER=mock npm run dev`,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: false,
     timeout: 60_000,
