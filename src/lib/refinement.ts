@@ -1,7 +1,7 @@
 import { asc, eq } from 'drizzle-orm'
 import { db } from '@/db/client'
 import { question, refinement, type Refinement } from '@/db/schema'
-import { getProvider, type RefinementProvider, type RefinementSuggestion } from '@/lib/llm'
+import { getProvider, type ReasoningProvider, type RefinementSuggestion } from '@/lib/llm'
 
 export class NotFoundError extends Error {}
 export class IneligibleError extends Error {}
@@ -19,7 +19,7 @@ export async function listClustered(limit = 50) {
 /** Run the reasoning LLM against a clustered question. Does NOT persist anything. */
 export async function suggestRefinement(
   questionId: string,
-  provider: RefinementProvider = getProvider(),
+  provider: Pick<ReasoningProvider, 'refine'> = getProvider(),
 ): Promise<{ before: string; suggestion: RefinementSuggestion }> {
   const [q] = await db.select().from(question).where(eq(question.id, questionId)).limit(1)
   if (!q) throw new NotFoundError(`Question not found: ${questionId}`)

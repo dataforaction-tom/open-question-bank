@@ -2,7 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 import { eq, sql } from 'drizzle-orm'
 import { db, pool } from '@/db/client'
 import { datasetVersion, question, refinement } from '@/db/schema'
-import type { RefinementProvider, RefinementSuggestion } from '@/lib/llm'
+import type { ReasoningProvider, RefinementSuggestion } from '@/lib/llm'
 import {
   IneligibleError,
   listClustered,
@@ -41,7 +41,7 @@ const SUGGESTION: RefinementSuggestion = {
   model: 'qwen2.5:7b',
   modelVersion: 'sha256:abc',
 }
-const stubProvider: RefinementProvider = { refine: async () => SUGGESTION }
+const stubProvider: Pick<ReasoningProvider, 'refine'> = { refine: async () => SUGGESTION }
 
 beforeEach(async () => {
   await db.execute(sql`TRUNCATE TABLE ${refinement} RESTART IDENTITY CASCADE`)

@@ -21,7 +21,7 @@ export type RefinementSuggestion = z.infer<typeof refinementSuggestionSchema> & 
   modelVersion: string
 }
 
-export interface RefinementProvider {
+export interface ReasoningProvider {
   refine(canonicalText: string): Promise<RefinementSuggestion>
 }
 
@@ -54,33 +54,41 @@ Return ONLY a JSON object with this exact shape:
 }`
 }
 
-/** Shared chat-provider logic: build prompt, call, validate, retry once, resolve model_version. */
-abstract class ChatProvider implements RefinementProvider {
+/** Shared chat-provider logic: call, zod-validate, retry once, resolve model_version. */
+abstract class ChatProvider implements ReasoningProvider {
   constructor(protected readonly model: string) {}
 
   protected abstract callChat(prompt: string): Promise<unknown>
   protected abstract resolveModelVersion(): Promise<string>
 
-  async refine(canonicalText: string): Promise<RefinementSuggestion> {
-    const prompt = buildRefinementPrompt(canonicalText)
-    let parsed: z.infer<typeof refinementSuggestionSchema> | undefined
+  /**
+   * One validated structured completion. Retries once, but ONLY on a transport or
+   * output-validation failure (e.g. non-JSON output). Provenance resolution stays outside
+   * the loop so a digest hiccup can't trigger a wasteful second LLM call.
+   */
+  protected async complete<T>(
+    prompt: string,
+    schema: z.ZodType<T>,
+  ): Promise<T & { model: string; modelVersion: string }> {
+    let parsed: T | undefined
     let lastErr: unknown
-    // Retry once, but ONLY on a transport or output-validation failure (e.g. non-JSON output).
-    // Provenance resolution is deliberately outside this loop so a digest hiccup can't trigger
-    // a wasteful second LLM call.
-    for (let attempt = 0; attempt < 2 && !parsed; attempt++) {
+    for (let attempt = 0; attempt < 2 && parsed === undefined; attempt++) {
       try {
-        parsed = refinementSuggestionSchema.parse(await this.callChat(prompt))
+        parsed = schema.parse(await this.callChat(prompt))
       } catch (err) {
         lastErr = err
       }
     }
-    if (!parsed) {
+    if (parsed === undefined) {
       const message = lastErr instanceof Error ? lastErr.message : String(lastErr)
-      throw new ProviderError(`Refinement failed: ${message}`)
+      throw new ProviderError(`Reasoning call failed: ${message}`)
     }
     const modelVersion = await this.resolveModelVersion() // never throws — falls back to the model id
     return { ...parsed, model: this.model, modelVersion }
+  }
+
+  async refine(canonicalText: string): Promise<RefinementSuggestion> {
+    return this.complete(buildRefinementPrompt(canonicalText), refinementSuggestionSchema)
   }
 }
 
@@ -164,7 +172,7 @@ export class OpenRouterProvider extends ChatProvider {
 }
 
 /** Deterministic provider for e2e (REASONING_PROVIDER=mock) — never calls the network. */
-export class MockProvider implements RefinementProvider {
+export class MockProvider implements ReasoningProvider {
   async refine(canonicalText: string): Promise<RefinementSuggestion> {
     return {
       suggestedText: `${canonicalText} (refined)`,
@@ -177,7 +185,7 @@ export class MockProvider implements RefinementProvider {
   }
 }
 
-export function getProvider(): RefinementProvider {
+export function getProvider(): ReasoningProvider {
   const provider = process.env.REASONING_PROVIDER ?? 'ollama'
   const model = process.env.REASONING_MODEL ?? 'qwen2.5:7b'
   switch (provider) {
