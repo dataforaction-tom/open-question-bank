@@ -1,0 +1,17 @@
+import { NextResponse } from 'next/server'
+import { scoreQuestion } from '@/lib/curation'
+import { IneligibleError, NotFoundError } from '@/lib/errors'
+
+export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  try {
+    const scores = await scoreQuestion(id)
+    return NextResponse.json({ scores })
+  } catch (err) {
+    if (err instanceof NotFoundError) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (err instanceof IneligibleError) return NextResponse.json({ error: 'Not clustered' }, { status: 409 })
+    // Remaining failures are the LLM call itself (transport or output validation).
+    console.error('[POST /api/admin/questions/:id/score]', err)
+    return NextResponse.json({ error: 'Scoring service unavailable' }, { status: 502 })
+  }
+}
