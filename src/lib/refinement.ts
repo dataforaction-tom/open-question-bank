@@ -2,9 +2,10 @@ import { asc, eq } from 'drizzle-orm'
 import { db } from '@/db/client'
 import { question, refinement, type Refinement } from '@/db/schema'
 import { getProvider, type ReasoningProvider, type RefinementSuggestion } from '@/lib/llm'
+import { IneligibleError, NotFoundError } from '@/lib/errors'
 
-export class NotFoundError extends Error {}
-export class IneligibleError extends Error {}
+// Re-exported so existing imports (routes, tests) keep working.
+export { IneligibleError, NotFoundError }
 
 /** Questions eligible for refinement: those that have been clustered (spec §5 ordering). */
 export async function listClustered(limit = 50) {
