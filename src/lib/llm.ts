@@ -21,8 +21,27 @@ export type RefinementSuggestion = z.infer<typeof refinementSuggestionSchema> & 
   modelVersion: string
 }
 
+const criterionScoreSchema = z.object({
+  criterion: z.enum(CRITERIA),
+  score: z.number().int().min(1).max(5),
+  rationale: z.string().min(1),
+})
+
+/** Exactly five entries, each criterion present exactly once. */
+export const scoreResultSchema = z
+  .object({ scores: z.array(criterionScoreSchema).length(CRITERIA.length) })
+  .refine((r) => new Set(r.scores.map((s) => s.criterion)).size === CRITERIA.length, {
+    message: 'each criterion must appear exactly once',
+  })
+
+export type ScoreResult = z.infer<typeof scoreResultSchema> & {
+  model: string
+  modelVersion: string
+}
+
 export interface ReasoningProvider {
   refine(canonicalText: string): Promise<RefinementSuggestion>
+  score(canonicalText: string): Promise<ScoreResult>
 }
 
 /** Raised on any LLM transport or output-validation failure → maps to HTTP 502. */
@@ -51,6 +70,34 @@ Return ONLY a JSON object with this exact shape:
   "critique": [{ "criterion": <one of the five>, "verdict": "pass" | "fail", "note": "short reason" }, ... one entry per criterion ...],
   "criteriaApplied": [<criteria your rewrite actually changed>],
   "rationale": "one or two sentences explaining the rewrite"
+}`
+}
+
+/** Fuller rubric for scoring: definition + fails-when guidance (mirrors definedness-rubric.md). */
+const SCORING_RUBRIC = `A well-defined question satisfies five independent criteria:
+- specific (concreteness vs vagueness): concrete enough to act on. Fails when too general or abstract to yield a meaningful answer.
+- answerable (can it be answered at all): evidence, reasoning, or investigation could in principle settle it. Fails when unfalsifiable, rhetorical, or no conceivable evidence would resolve it.
+- scoped (bounded extent): clear boundaries — domain, population, timeframe, or context. Fails when boundless, with no clear who / where / when.
+- non-leading (neutrality): does not presuppose its own answer or embed bias. Fails when it smuggles in a conclusion or loads the framing.
+- single-barrelled (one ask): asks about exactly one thing. Fails when two or more distinct questions are bundled under one answer.`
+
+export function buildScoringPrompt(canonicalText: string): string {
+  return `You assess how well-defined a question is against a definedness rubric.
+
+${SCORING_RUBRIC}
+
+Score each criterion independently on an integer scale from 1 to 5:
+1 = clearly fails the criterion, 3 = partially satisfies it, 5 = clearly satisfies it.
+
+Question to score:
+"""${canonicalText}"""
+
+Return ONLY a JSON object with this exact shape:
+{
+  "scores": [
+    { "criterion": <one of the five>, "score": <integer 1-5>, "rationale": "short reason for this score" },
+    ... exactly one entry per criterion, all five criteria present ...
+  ]
 }`
 }
 
@@ -89,6 +136,10 @@ abstract class ChatProvider implements ReasoningProvider {
 
   async refine(canonicalText: string): Promise<RefinementSuggestion> {
     return this.complete(buildRefinementPrompt(canonicalText), refinementSuggestionSchema)
+  }
+
+  async score(canonicalText: string): Promise<ScoreResult> {
+    return this.complete(buildScoringPrompt(canonicalText), scoreResultSchema)
   }
 }
 
@@ -179,6 +230,18 @@ export class MockProvider implements ReasoningProvider {
       critique: CRITERIA.map((criterion) => ({ criterion, verdict: 'pass', note: 'ok' })),
       criteriaApplied: ['specific'],
       rationale: 'Mock refinement for end-to-end tests.',
+      model: 'mock',
+      modelVersion: 'mock',
+    }
+  }
+
+  async score(): Promise<ScoreResult> {
+    return {
+      scores: CRITERIA.map((criterion) => ({
+        criterion,
+        score: 4,
+        rationale: `mock ${criterion} rationale`,
+      })),
       model: 'mock',
       modelVersion: 'mock',
     }
