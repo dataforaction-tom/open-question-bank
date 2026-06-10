@@ -13,6 +13,7 @@ import {
   vector,
   index,
   uniqueIndex,
+  check,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core'
 
@@ -33,7 +34,7 @@ export const questionStateEnum = pgEnum('question_state', [
   'archived',
 ])
 
-export const moderationActionEnum = pgEnum('moderation_action', ['approve', 'reject'])
+export const moderationActionEnum = pgEnum('moderation_action', ['approve', 'reject', 'promote'])
 
 export const refinementSuggestedByEnum = pgEnum('refinement_suggested_by', ['llm', 'human'])
 export const refinementActionEnum = pgEnum('refinement_action', ['accept', 'reject', 'edit'])
@@ -146,6 +147,40 @@ export const refinement = pgTable(
   (table) => [index('refinement_question_idx').on(table.questionId)],
 )
 
+// The five definedness criteria (mirrors definedness-rubric.md and CRITERIA in src/lib/llm.ts).
+export const definednessCriterionEnum = pgEnum('definedness_criterion', [
+  'specific',
+  'answerable',
+  'scoped',
+  'non-leading',
+  'single-barrelled',
+])
+
+// Append-only model assessment at curation time (spec §4). One scoring run inserts five rows
+// (one per criterion) in a single statement, so they share an identical now() timestamp —
+// that shared timestamp is how runs are grouped. Rows are never mutated; re-scoring appends.
+// model/model_version are NOT NULL: scores are always model-produced (no human path).
+export const definednessScore = pgTable(
+  'definedness_score',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    questionId: uuid('question_id')
+      .notNull()
+      .references(() => question.id),
+    criterion: definednessCriterionEnum('criterion').notNull(),
+    score: integer('score').notNull(),
+    rationale: text('rationale').notNull(),
+    model: text('model').notNull(),
+    modelVersion: text('model_version').notNull(),
+    timestamp: timestamp('timestamp', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('definedness_score_question_idx').on(table.questionId),
+    // Belt-and-braces under the zod boundary validation (design §3).
+    check('definedness_score_range', sql`${table.score} BETWEEN 1 AND 5`),
+  ],
+)
+
 export type Question = typeof question.$inferSelect
 export type NewQuestion = typeof question.$inferInsert
 export type DatasetVersion = typeof datasetVersion.$inferSelect
@@ -153,3 +188,4 @@ export type Cluster = typeof cluster.$inferSelect
 export type ModerationEvent = typeof moderationEvent.$inferSelect
 export type Refinement = typeof refinement.$inferSelect
 export type NewRefinement = typeof refinement.$inferInsert
+export type DefinednessScore = typeof definednessScore.$inferSelect
