@@ -1,6 +1,6 @@
 # State
 
-> Last updated: 2026-06-05
+> Last updated: 2026-06-10
 
 ## System State Diagram
 
@@ -13,7 +13,7 @@ stateDiagram-v2
     Testing --> Deploying: tests pass
     Deploying --> Live: deployed
 
-    note right of Building: ← WE ARE HERE (Slices 1-3 built + tested; Slices 4-7 next)
+    note right of Building: ← WE ARE HERE (Slices 1-4 built + tested; Slices 5-7 next)
 ```
 
 ## Component Status
@@ -29,7 +29,7 @@ stateDiagram-v2
 | Submit + Embed + Dedup | ✅ Done | Slice 1 — submit→embed(pinned)→dedup-at-source; 13 unit/integration tests + Playwright e2e; endpoint hardened per review |
 | Cluster + moderation gate | ✅ Done | Slice 2 — admin auth (signed-cookie), manual moderation queue, assign-to-nearest clustering, append-only `moderation_event` |
 | LLM refinement (training set) | ✅ Done | Slice 3 — pluggable provider (local Ollama / Ollama Cloud / OpenRouter), append-only `refinement` log, admin refine UI (suggest → accept/edit/reject) + per-question history; no re-embedding, no state change |
-| Definedness scoring + curation | ⏳ Not started | Slice 4 |
+| Definedness scoring + curation | ✅ Done | Slice 4 — append-only `definedness_score` (1–5 + rationale per criterion, advisory), audited `clustered → canonical` promotion, `/admin/curation` UI |
 | Campaigns + TrueSkill comparison | ⏳ Not started | Slice 5 |
 | Ranked agenda + evidence views | ⏳ Not started | Slice 6 |
 | Synthesis (propose/endorse) | ⏳ Not started | Slice 7 |

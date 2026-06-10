@@ -33,8 +33,8 @@ Build along the pipeline spine, slice by slice, each slice runnable and tested b
 - [x] Slice 1: Submit + Embed + Dedup-at-source ("yours or new?") — full pipeline tested (13 unit/integration + e2e), endpoint hardened per review
 - [x] Slice 2: Cluster (assign-to-nearest within active version) + moderation gate — admin auth (signed-cookie session), manual moderation queue, assign-to-nearest clustering, append-only `moderation_event`; 27 tests + e2e
 - [x] Slice 3: LLM-assisted refinement (the logged transformation = training set) — pluggable reasoning provider (local Ollama / Ollama Cloud / OpenRouter), append-only `refinement` log, admin refine UI (suggest → accept/edit/reject) with per-question history; no re-embedding, no state change; 45 unit/integration + 3 e2e green
-- [ ] Slice 4: Definedness scoring at curation + admin canonical-set curation — CURRENT
-- [ ] Slice 5: Campaigns + pairwise comparison (TrueSkill, adaptive pairing)
+- [x] Slice 4: Definedness scoring at curation + admin canonical-set curation — append-only `definedness_score` (1–5 + rationale per criterion, advisory), generic `complete()` provider core, audited `clustered → canonical` promotion, `/admin/curation` UI; 75 unit/integration + 4 e2e green
+- [ ] Slice 5: Campaigns + pairwise comparison (TrueSkill, adaptive pairing) — CURRENT
 - [ ] Slice 6: Ranked agenda + score-evidence transparency views
 - [ ] Slice 7: Synthesis (LLM proposes, human endorses, lineage preserved)
 - [ ] Open data export + anonymisation/withdrawal (GDPR tombstones)
