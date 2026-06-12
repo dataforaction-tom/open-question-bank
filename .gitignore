@@ -5,6 +5,11 @@ CLAUDE.local.md
 MISTAKES.md
 HANDOFF.md
 
+# Internal planning & dev docs (kept local, out of the public repo)
+PLAN.md
+STATE.md
+docs/superpowers/
+
 # Secrets & local env
 .env
 .env.*

@@ -6,7 +6,7 @@ Question Bank takes a messy pool of submitted questions and produces a trustwort
 
 Open source and **local-first**: the whole system runs on a single machine with no required external dependency. A hosted instance is offered too, on the same backend.
 
-> Status: **Slice 1 built**. The [technical specification](./question-bank-spec.md) is finalised (v0.1) and the first vertical slice — Submit → Embed (pinned `nomic-embed-text`) → Dedup-at-source — runs locally with tests. Remaining slices (cluster, refine, score, compare, rank, synthesise) are next. See [PLAN.md](./PLAN.md) and [STATE.md](./STATE.md).
+> Status: **Slices 1–4 built**. The [technical specification](./question-bank-spec.md) is finalised (v0.1) and the first four vertical slices — submit → embed (pinned `nomic-embed-text`) → dedup-at-source, moderation + clustering, LLM-assisted refinement, and definedness scoring + curation — run locally with tests. Remaining slices (compare, rank, synthesise) are next.
 
 ## The defensible core: the refinement log
 
@@ -61,15 +61,12 @@ npm run dev                               # http://localhost:3000
 ```
 
 Then open `http://localhost:3000/submit` and submit a question. Run the tests with `npm test`
-(unit + integration; integration needs the `qb_test` database — see the plan in
-`docs/superpowers/plans/`) and `npm run test:e2e`.
+(unit + integration; integration needs a `qb_test` database) and `npm run test:e2e`.
 
 ## Documentation
 
 - [`question-bank-spec.md`](./question-bank-spec.md) — full technical specification (source of truth)
 - [`definedness-rubric.md`](./definedness-rubric.md) — the five definedness criteria, defined (open training-set docs)
-- [`PLAN.md`](./PLAN.md) — objective, approach, task list, decisions, open questions
-- [`STATE.md`](./STATE.md) — where things stand; component status; data flow
 
 ## Launch decisions (resolved)
 
