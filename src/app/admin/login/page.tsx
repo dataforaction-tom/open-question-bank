@@ -2,6 +2,10 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { PageShell } from '@/components/ui/PageShell'
+import { Button } from '@/components/ui/Button'
+import { Input, Label } from '@/components/ui/Field'
+import { Notice } from '@/components/ui/Notice'
 
 export default function AdminLoginPage() {
   const router = useRouter()
@@ -32,23 +36,33 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <main style={{ maxWidth: 360, margin: '4rem auto', fontFamily: 'system-ui' }}>
-      <h1>Admin login</h1>
-      <form onSubmit={handleSubmit}>
-        <label>
-          Password{' '}
-          <input
+    <PageShell size="sm">
+      <div className="space-y-2">
+        <p className="eyebrow">Curators only</p>
+        <h1 className="text-3xl">Admin login</h1>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <Label htmlFor="password">Password</Label>
+          <Input
+            id="password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
           />
-        </label>{' '}
-        <button type="submit" disabled={busy || password.length === 0}>
+        </div>
+        <Button type="submit" disabled={busy || password.length === 0}>
           {busy ? 'Signing in…' : 'Log in'}
-        </button>
+        </Button>
       </form>
-      {error && <p role="alert">{error}</p>}
-    </main>
+
+      {error && (
+        <Notice role="alert" tone="error">
+          {error}
+        </Notice>
+      )}
+    </PageShell>
   )
 }

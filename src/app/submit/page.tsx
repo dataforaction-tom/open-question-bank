@@ -1,6 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import { PageShell } from '@/components/ui/PageShell'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { Textarea } from '@/components/ui/Field'
+import { Notice } from '@/components/ui/Notice'
 
 interface Candidate {
   id: string
@@ -61,67 +66,92 @@ export default function SubmitPage() {
   }
 
   return (
-    <main style={{ maxWidth: 640, margin: '4rem auto', fontFamily: 'system-ui' }}>
-      <h1>Submit a question</h1>
+    <PageShell>
+      <div className="space-y-2">
+        <p className="eyebrow">Add to the bank</p>
+        <h1 className="text-3xl sm:text-4xl">Submit a question</h1>
+      </div>
 
       {phase === 'editing' && (
-        <form onSubmit={handleSubmit}>
-          <textarea
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <Textarea
             aria-label="Your question"
             value={text}
             onChange={(e) => setText(e.target.value)}
             rows={3}
-            style={{ width: '100%' }}
+            placeholder="What do you want this community to figure out together?"
             required
           />
-          <fieldset style={{ marginTop: '0.5rem' }}>
-            <legend>Visibility</legend>
-            <label>
-              <input
-                type="radio"
-                name="visibility"
-                checked={visibility === 'public'}
-                onChange={() => setVisibility('public')}
-              />{' '}
-              Public
-            </label>{' '}
-            <label>
-              <input
-                type="radio"
-                name="visibility"
-                checked={visibility === 'anonymous'}
-                onChange={() => setVisibility('anonymous')}
-              />{' '}
-              Anonymous
-            </label>
+
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium text-muted">Visibility</legend>
+            <div className="flex gap-5 text-sm">
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="visibility"
+                  className="accent-[var(--moss)]"
+                  checked={visibility === 'public'}
+                  onChange={() => setVisibility('public')}
+                />
+                Public
+              </label>
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="visibility"
+                  className="accent-[var(--moss)]"
+                  checked={visibility === 'anonymous'}
+                  onChange={() => setVisibility('anonymous')}
+                />
+                Anonymous
+              </label>
+            </div>
           </fieldset>
-          <button type="submit" disabled={busy || text.trim().length === 0}>
+
+          <Button type="submit" variant="accent" disabled={busy || text.trim().length === 0}>
             {busy ? 'Checking…' : 'Submit'}
-          </button>
+          </Button>
         </form>
       )}
 
       {phase === 'choosing' && (
-        <section>
-          <h2>Is your question one of these, or new?</h2>
-          <ul>
-            {candidates.map((c) => (
-              <li key={c.id} style={{ marginBottom: '0.5rem' }}>
-                <span>{c.canonicalText}</span>{' '}
-                <button type="button" onClick={() => chooseExisting(c.id)} disabled={busy}>
-                  This is mine
-                </button>
+        <section className="space-y-4">
+          <h2 className="text-xl">Is your question one of these, or new?</h2>
+          <ul className="space-y-3 list-none p-0">
+            {candidates.map((candidate) => (
+              <li key={candidate.id}>
+                <Card className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <span className="min-w-0 break-words text-ink">{candidate.canonicalText}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="shrink-0 self-start sm:self-auto"
+                    onClick={() => chooseExisting(candidate.id)}
+                    disabled={busy}
+                  >
+                    This is mine
+                  </Button>
+                </Card>
               </li>
             ))}
           </ul>
-          <button type="button" onClick={chooseNew} disabled={busy}>
+          <Button type="button" onClick={chooseNew} disabled={busy}>
             None of these — mine is new
-          </button>
+          </Button>
         </section>
       )}
 
-      {phase === 'done' && <p role="status">{message}</p>}
-      {phase !== 'done' && message && <p role="alert">{message}</p>}
-    </main>
+      {phase === 'done' && (
+        <Notice role="status" tone="info">
+          {message}
+        </Notice>
+      )}
+      {phase !== 'done' && message && (
+        <Notice role="alert" tone="error">
+          {message}
+        </Notice>
+      )}
+    </PageShell>
   )
 }

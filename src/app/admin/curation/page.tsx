@@ -1,6 +1,12 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { AdminShell } from '@/components/ui/AdminShell'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { Notice } from '@/components/ui/Notice'
+import { Stamp } from '@/components/ui/Stamp'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 interface Clustered {
   id: string
@@ -98,68 +104,94 @@ export default function CurationPage() {
   const runCount = new Set(history.map((row) => row.timestamp)).size
 
   return (
-    <main style={{ maxWidth: 720, margin: '4rem auto', fontFamily: 'system-ui' }}>
-      <h1>Curation</h1>
-      {message && <p role="status">{message}</p>}
+    <AdminShell>
+      <div className="space-y-1">
+        <p className="eyebrow">Curate</p>
+        <h1 className="text-3xl">Curation</h1>
+      </div>
+
+      {message && (
+        <Notice role="status" tone="info">
+          {message}
+        </Notice>
+      )}
 
       {active ? (
-        <section>
-          <p>
-            <strong>Question:</strong> {active.canonicalText}
-          </p>
-          <button type="button" onClick={score} disabled={busy}>
-            Score definedness
-          </button>{' '}
-          <button type="button" onClick={promote} disabled={busy}>
-            Promote to canonical
-          </button>{' '}
-          <button type="button" onClick={() => setActive(null)} disabled={busy}>
-            Back
-          </button>
+        <section className="space-y-5">
+          <Card className="space-y-2">
+            <p className="eyebrow">Question</p>
+            <p className="text-lg text-ink">{active.canonicalText}</p>
+          </Card>
+
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" onClick={score} disabled={busy}>
+              Score definedness
+            </Button>
+            <Button type="button" variant="accent" onClick={promote} disabled={busy}>
+              Promote to canonical
+            </Button>
+            <Button type="button" variant="quiet" onClick={() => setActive(null)} disabled={busy}>
+              Back
+            </Button>
+          </div>
 
           {current.length > 0 ? (
-            <>
-              <p>
-                <strong>Average: {average}</strong> (advisory — promotion is your call)
+            <Card className="space-y-3">
+              <p className="text-ink">
+                <span className="font-medium">Average: {average}</span>{' '}
+                <span className="text-muted">(advisory — promotion is your call)</span>
               </p>
-              <ul>
+              <ul className="space-y-2 list-none p-0">
                 {current.map((row) => (
-                  <li key={row.criterion}>
+                  <li key={row.criterion} className="text-sm text-ink">
                     {row.criterion}: {row.score} / 5 — {row.rationale}
                   </li>
                 ))}
               </ul>
               {runCount > 1 && (
-                <details>
-                  <summary>Score history ({runCount} runs)</summary>
-                  <ul>
+                <details className="text-sm">
+                  <summary className="cursor-pointer text-muted hover:text-ink">
+                    Score history ({runCount} runs)
+                  </summary>
+                  <ul className="mt-2 space-y-1 list-none p-0">
                     {history.map((row) => (
                       <li key={row.id}>
-                        [{new Date(row.timestamp).toLocaleString()}] {row.criterion}: {row.score} / 5 ({row.model})
+                        <Stamp>
+                          [{new Date(row.timestamp).toLocaleString()}] {row.criterion}: {row.score} / 5 ({row.model})
+                        </Stamp>
                       </li>
                     ))}
                   </ul>
                 </details>
               )}
-            </>
+            </Card>
           ) : (
-            <p>No scores yet — scoring is optional; you can promote without it.</p>
+            <p className="text-muted">
+              No scores yet — scoring is optional; you can promote without it.
+            </p>
           )}
         </section>
       ) : questions.length === 0 ? (
-        <p>No clustered questions to curate.</p>
+        <EmptyState>No clustered questions to curate.</EmptyState>
       ) : (
-        <ul>
+        <ul className="space-y-3 list-none p-0">
           {questions.map((q) => (
-            <li key={q.id} style={{ marginBottom: '1rem' }}>
-              <div>{q.canonicalText}</div>
-              <button type="button" onClick={() => open(q)} disabled={busy}>
-                Curate
-              </button>
+            <li key={q.id}>
+              <Card className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0 break-words text-ink">{q.canonicalText}</div>
+                <Button
+                  type="button"
+                  className="shrink-0 self-start sm:self-auto"
+                  onClick={() => open(q)}
+                  disabled={busy}
+                >
+                  Curate
+                </Button>
+              </Card>
             </li>
           ))}
         </ul>
       )}
-    </main>
+    </AdminShell>
   )
 }
