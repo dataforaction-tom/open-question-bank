@@ -1,0 +1,150 @@
+@import 'tailwindcss';
+
+/*
+ * "Warm Civic" design tokens.
+ *
+ * The palette lives in plain custom properties so it can be re-themed at runtime
+ * (dark mode below just overrides these). `@theme inline` then exposes them to
+ * Tailwind as utilities (bg-paper, text-ink, border-line, font-display, …) that
+ * reference the variable rather than baking in a fixed value.
+ */
+:root {
+  --paper: #fbf7f0; /* warm oat — page background */
+  --surface: #ece3d4; /* sand — cards / raised surfaces */
+  --ink: #211c16; /* warm near-black — body text */
+  --muted: #6b6256; /* secondary text */
+  --moss: #2f5d45; /* primary accent — links, headers, primary button */
+  --clay: #c2542a; /* secondary CTA pop */
+  --sage: #8aa293; /* metadata / quiet text */
+  --line: #e0d6c5; /* hairline rules / borders */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #1a1714; /* warm espresso, never pure black */
+    --surface: #241f1a;
+    --ink: #f0e9dd;
+    --muted: #a89e8e;
+    --moss: #7fb79a; /* lifted for legibility on dark */
+    --clay: #e2774a;
+    --sage: #6e7e72;
+    --line: #3a332c;
+  }
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-moss: var(--moss);
+  --color-clay: var(--clay);
+  --color-sage: var(--sage);
+  --color-line: var(--line);
+
+  --font-display: var(--font-fraunces), Georgia, 'Times New Roman', serif;
+  --font-body: var(--font-public-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, 'SFMono-Regular', monospace;
+}
+
+@layer base {
+  body {
+    background-color: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* A faint warm paper grain so backgrounds read as stock, not screen. */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  /* Prose links: moss with a soft sage underline that warms on hover. */
+  a {
+    color: var(--moss);
+    text-decoration-line: underline;
+    text-decoration-color: var(--sage);
+    text-underline-offset: 3px;
+    transition: text-decoration-color 0.15s ease;
+  }
+  a:hover {
+    text-decoration-color: var(--moss);
+  }
+
+  /* One consistent, on-brand focus ring everywhere (audit H1). */
+  :focus-visible {
+    outline: 2px solid var(--moss);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+}
+
+/*
+ * Page-load choreography: children of `.reveal` rise and fade in sequence.
+ * High-impact-once, not scattered. Fully disabled under reduced-motion.
+ */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.reveal > * {
+  animation: rise 0.55s cubic-bezier(0.2, 0.65, 0.2, 1) both;
+}
+.reveal > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.reveal > *:nth-child(2) {
+  animation-delay: 70ms;
+}
+.reveal > *:nth-child(3) {
+  animation-delay: 140ms;
+}
+.reveal > *:nth-child(4) {
+  animation-delay: 210ms;
+}
+.reveal > *:nth-child(5) {
+  animation-delay: 280ms;
+}
+.reveal > *:nth-child(6) {
+  animation-delay: 350ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal > * {
+    animation: none;
+  }
+}
+
+/* Small-caps civic eyebrow label, used above headlines. */
+.eyebrow {
+  font-family: var(--font-body);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--moss);
+}

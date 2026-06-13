@@ -1,7 +1,12 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
+import { AdminShell } from '@/components/ui/AdminShell'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { Input } from '@/components/ui/Field'
+import { Notice } from '@/components/ui/Notice'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 interface Pending {
   id: string
@@ -10,7 +15,6 @@ interface Pending {
 }
 
 export default function ModerationPage() {
-  const router = useRouter()
   const [pending, setPending] = useState<Pending[]>([])
   const [message, setMessage] = useState('')
   const [reasons, setReasons] = useState<Record<string, string>>({})
@@ -67,43 +71,57 @@ export default function ModerationPage() {
     }
   }
 
-  async function logout() {
-    await fetch('/api/admin/logout', { method: 'POST' })
-    router.push('/admin/login')
-  }
-
   return (
-    <main style={{ maxWidth: 720, margin: '4rem auto', fontFamily: 'system-ui' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <h1>Moderation queue</h1>
-        <button type="button" onClick={logout}>
-          Log out
-        </button>
+    <AdminShell>
+      <div className="space-y-1">
+        <p className="eyebrow">Queue</p>
+        <h1 className="text-3xl">Moderation queue</h1>
       </div>
-      {message && <p role="status">{message}</p>}
+
+      {message && (
+        <Notice role="status" tone="info">
+          {message}
+        </Notice>
+      )}
+
       {pending.length === 0 ? (
-        <p>No pending questions.</p>
+        <EmptyState>No pending questions.</EmptyState>
       ) : (
-        <ul>
+        <ul className="space-y-3 list-none p-0">
           {pending.map((q) => (
-            <li key={q.id} style={{ marginBottom: '1rem' }}>
-              <div>{q.canonicalText}</div>
-              <button type="button" onClick={() => approve(q.id)} disabled={busyId === q.id}>
-                Approve
-              </button>{' '}
-              <input
-                aria-label={`Reject reason for ${q.id}`}
-                placeholder="reason (optional)"
-                value={reasons[q.id] ?? ''}
-                onChange={(e) => setReasons((r) => ({ ...r, [q.id]: e.target.value }))}
-              />{' '}
-              <button type="button" onClick={() => reject(q.id)} disabled={busyId === q.id}>
-                Reject
-              </button>
+            <li key={q.id}>
+              <Card className="space-y-3">
+                <div className="break-words text-ink">{q.canonicalText}</div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="accent"
+                    onClick={() => approve(q.id)}
+                    disabled={busyId === q.id}
+                  >
+                    Approve
+                  </Button>
+                  <Input
+                    aria-label={`Reject reason for ${q.id}`}
+                    placeholder="reason (optional)"
+                    className="flex-1 min-w-[12rem]"
+                    value={reasons[q.id] ?? ''}
+                    onChange={(e) => setReasons((r) => ({ ...r, [q.id]: e.target.value }))}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => reject(q.id)}
+                    disabled={busyId === q.id}
+                  >
+                    Reject
+                  </Button>
+                </div>
+              </Card>
             </li>
           ))}
         </ul>
       )}
-    </main>
+    </AdminShell>
   )
 }
