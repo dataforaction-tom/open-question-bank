@@ -181,6 +181,100 @@ export const definednessScore = pgTable(
   ],
 )
 
+// ---- Slice 5a: campaigns + pairwise ranking (spec §4, §6) ----
+
+// Only `sealed` is used in 5a; `global` is declared now so the enum is stable.
+export const campaignScopeEnum = pgEnum('campaign_scope', ['sealed', 'global'])
+// 5a uses draft → comparing → closed; the others land in later slices.
+export const campaignStateEnum = pgEnum('campaign_state', [
+  'draft',
+  'open',
+  'comparing',
+  'synthesising',
+  'closed',
+])
+
+export const campaign = pgTable('campaign', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  prompt: text('prompt').notNull(),
+  comparisonAxis: text('comparison_axis').notNull(), // free-text, e.g. "importance"
+  scope: campaignScopeEnum('scope').notNull().default('sealed'),
+  state: campaignStateEnum('state').notNull().default('draft'),
+  opensAt: timestamp('opens_at', { withTimezone: true }),
+  closesAt: timestamp('closes_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+// Sealed membership: the explicit set of canonical questions a campaign ranks.
+export const campaignQuestion = pgTable(
+  'campaign_question',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    campaignId: uuid('campaign_id')
+      .notNull()
+      .references(() => campaign.id),
+    questionId: uuid('question_id')
+      .notNull()
+      .references(() => question.id),
+    addedAt: timestamp('added_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('campaign_question_unique').on(table.campaignId, table.questionId),
+    index('campaign_question_campaign_idx').on(table.campaignId),
+  ],
+)
+
+// Append-only judgement log — the source of truth. `winner_question_id` null = draw.
+export const comparison = pgTable(
+  'comparison',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    campaignId: uuid('campaign_id')
+      .notNull()
+      .references(() => campaign.id),
+    questionAId: uuid('question_a_id')
+      .notNull()
+      .references(() => question.id),
+    questionBId: uuid('question_b_id')
+      .notNull()
+      .references(() => question.id),
+    winnerQuestionId: uuid('winner_question_id').references(() => question.id),
+    judgeRef: text('judge_ref').notNull(),
+    servedReason: text('served_reason'),
+    timestamp: timestamp('timestamp', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('comparison_campaign_idx').on(table.campaignId),
+    check('comparison_distinct', sql`${table.questionAId} <> ${table.questionBId}`),
+    check(
+      'comparison_winner_valid',
+      sql`${table.winnerQuestionId} IS NULL OR ${table.winnerQuestionId} = ${table.questionAId} OR ${table.winnerQuestionId} = ${table.questionBId}`,
+    ),
+  ],
+)
+
+// Mutable projection of the comparison log: one row per (campaign, question).
+export const score = pgTable(
+  'score',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    campaignId: uuid('campaign_id')
+      .notNull()
+      .references(() => campaign.id),
+    questionId: uuid('question_id')
+      .notNull()
+      .references(() => question.id),
+    mu: doublePrecision('mu').notNull(),
+    sigma: doublePrecision('sigma').notNull(),
+    nComparisons: integer('n_comparisons').notNull().default(0),
+    lastUpdated: timestamp('last_updated', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('score_campaign_question_unique').on(table.campaignId, table.questionId),
+    index('score_campaign_idx').on(table.campaignId),
+  ],
+)
+
 export type Question = typeof question.$inferSelect
 export type NewQuestion = typeof question.$inferInsert
 export type DatasetVersion = typeof datasetVersion.$inferSelect
@@ -189,3 +283,7 @@ export type ModerationEvent = typeof moderationEvent.$inferSelect
 export type Refinement = typeof refinement.$inferSelect
 export type NewRefinement = typeof refinement.$inferInsert
 export type DefinednessScore = typeof definednessScore.$inferSelect
+export type Campaign = typeof campaign.$inferSelect
+export type CampaignQuestion = typeof campaignQuestion.$inferSelect
+export type Comparison = typeof comparison.$inferSelect
+export type Score = typeof score.$inferSelect

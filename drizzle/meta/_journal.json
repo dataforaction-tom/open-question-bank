@@ -29,6 +29,13 @@
       "when": 1781073884296,
       "tag": "0003_lumpy_medusa",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1781519155207,
+      "tag": "0004_fast_gorgon",
+      "breakpoints": true
     }
   ]
 }
