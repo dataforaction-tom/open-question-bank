@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { listPending } from '@/lib/moderation'
 import { listClustered } from '@/lib/refinement'
+import { listCanonical } from '@/lib/campaign'
 
 export async function GET(request: Request) {
   const state = new URL(request.url).searchParams.get('state') ?? 'submitted'
@@ -10,5 +11,11 @@ export async function GET(request: Request) {
   if (state === 'clustered') {
     return NextResponse.json({ questions: await listClustered() })
   }
-  return NextResponse.json({ error: 'Only state=submitted or state=clustered is supported' }, { status: 400 })
+  if (state === 'canonical') {
+    return NextResponse.json({ questions: await listCanonical() })
+  }
+  return NextResponse.json(
+    { error: 'Only state=submitted, clustered, or canonical is supported' },
+    { status: 400 },
+  )
 }
