@@ -10,6 +10,7 @@ const links = [
   { href: '/admin/moderation', label: 'Moderation' },
   { href: '/admin/curation', label: 'Curation' },
   { href: '/admin/refinement', label: 'Refinement' },
+  { href: '/admin/campaigns', label: 'Campaigns' },
 ]
 
 // Shared chrome for the authenticated admin pages: cross-page nav (audit M1)
