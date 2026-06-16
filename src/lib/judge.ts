@@ -32,8 +32,13 @@ function readCookie(request: Request, name: string): string | undefined {
  * Read the judge token from the request cookie, or mint a fresh one. The caller
  * sets the cookie on the response when `isNew` is true.
  */
+// Generous upper bound on a valid token. We mint 36-char UUIDs; anything longer
+// is a malformed/forged cookie — treat it as absent and re-mint, so an attacker
+// can't write an unbounded string into comparison.judge_ref on this public route.
+const MAX_JUDGE_REF_LEN = 64
+
 export function getOrCreateJudgeRef(request: Request): { judgeRef: string; isNew: boolean } {
   const existing = readCookie(request, JUDGE_COOKIE)
-  if (existing) return { judgeRef: existing, isNew: false }
+  if (existing && existing.length <= MAX_JUDGE_REF_LEN) return { judgeRef: existing, isNew: false }
   return { judgeRef: crypto.randomUUID(), isNew: true }
 }

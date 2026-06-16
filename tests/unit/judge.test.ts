@@ -35,4 +35,10 @@ describe('getOrCreateJudgeRef', () => {
     const { judgeRef } = getOrCreateJudgeRef(req(`${JUDGE_COOKIE}=first; ${JUDGE_COOKIE}=second`))
     expect(judgeRef).toBe('first')
   })
+
+  it('re-mints when the cookie token is implausibly long (forged/oversized)', () => {
+    const { judgeRef, isNew } = getOrCreateJudgeRef(req(`${JUDGE_COOKIE}=${'x'.repeat(5000)}`))
+    expect(isNew).toBe(true)
+    expect(judgeRef).toMatch(/^[0-9a-f-]{36}$/)
+  })
 })
