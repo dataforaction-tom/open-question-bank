@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { selectPair, SIGMA_STOP } from '@/lib/pairing'
+import { pairKey, selectPair, SIGMA_STOP } from '@/lib/pairing'
 
 const s = (questionId: string, mu: number, sigma: number) => ({ questionId, mu, sigma })
 
@@ -37,5 +37,25 @@ describe('selectPair', () => {
   it('explains why the pair was served', () => {
     const pair = selectPair([s('a', 25, 8), s('b', 26, 8)])
     expect(pair!.servedReason).toMatch(/Δμ=/)
+  })
+
+  it('skips an excluded (already-judged) pair', () => {
+    const exclude = new Set([pairKey('a', 'b')])
+    const pair = selectPair([s('a', 25, 8), s('b', 25, 8)], { excludePairs: exclude })
+    expect(pair).toBeNull()
+  })
+
+  it('serves a different pair when the top pair is excluded', () => {
+    const exclude = new Set([pairKey('a', 'b')])
+    const pair = selectPair([s('a', 25, 8), s('b', 25, 8), s('c', 25, 8)], { excludePairs: exclude })
+    expect(pair).not.toBeNull()
+    const key = pairKey(pair!.a.questionId, pair!.b.questionId)
+    expect(key).not.toBe(pairKey('a', 'b'))
+  })
+})
+
+describe('pairKey', () => {
+  it('is order-independent', () => {
+    expect(pairKey('a', 'b')).toBe(pairKey('b', 'a'))
   })
 })
