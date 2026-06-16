@@ -1,0 +1,1 @@
+CREATE INDEX "comparison_campaign_judge_idx" ON "comparison" USING btree ("campaign_id","judge_ref");

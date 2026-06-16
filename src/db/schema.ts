@@ -245,6 +245,7 @@ export const comparison = pgTable(
   },
   (table) => [
     index('comparison_campaign_idx').on(table.campaignId),
+    index('comparison_campaign_judge_idx').on(table.campaignId, table.judgeRef),
     check('comparison_distinct', sql`${table.questionAId} <> ${table.questionBId}`),
     check(
       'comparison_winner_valid',
