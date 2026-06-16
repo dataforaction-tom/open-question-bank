@@ -1,9 +1,9 @@
-import { and, asc, eq, inArray } from 'drizzle-orm'
+import { and, asc, eq, inArray, or } from 'drizzle-orm'
 import { db } from '@/db/client'
 import { campaign, campaignQuestion, comparison, question, score } from '@/db/schema'
 import { IneligibleError, NotFoundError } from '@/lib/errors'
 import { initialRating, update, type Rating } from '@/lib/trueskill'
-import { selectPair } from '@/lib/pairing'
+import { selectPair, pairKey } from '@/lib/pairing'
 
 // The transaction handle Drizzle hands to db.transaction() callbacks — lets
 // helpers run inside a transaction without casting away the db type.
@@ -35,7 +35,7 @@ function applyOutcome(a: Rating, b: Rating, winner: 'a' | 'b' | 'draw'): [Rating
   return [na, nb]
 }
 
-export async function nextPair(campaignId: string) {
+export async function nextPair(campaignId: string, judgeRef: string) {
   const [c] = await db.select().from(campaign).where(eq(campaign.id, campaignId)).limit(1)
   if (!c) throw new NotFoundError(`Campaign not found: ${campaignId}`)
   if (c.state !== 'comparing') throw new IneligibleError(`Campaign ${campaignId} is not comparing (state=${c.state})`)
@@ -45,7 +45,13 @@ export async function nextPair(campaignId: string) {
     .from(score)
     .where(eq(score.campaignId, campaignId))
 
-  const pair = selectPair(rows)
+  const judged = await db
+    .select({ a: comparison.questionAId, b: comparison.questionBId })
+    .from(comparison)
+    .where(and(eq(comparison.campaignId, campaignId), eq(comparison.judgeRef, judgeRef)))
+
+  const excludePairs = new Set(judged.map((r) => pairKey(r.a, r.b)))
+  const pair = selectPair(rows, { excludePairs })
   if (!pair) return null
 
   const texts = await db
@@ -95,10 +101,36 @@ export async function recordComparison(input: RecordComparisonInput) {
       )
     if (members.length !== 2) throw new IneligibleError('Both questions must belong to the campaign')
 
-    // NOTE: READ COMMITTED — concurrent judges could read the same nComparisons and
-    // both increment to the same value, under-counting the tally (mu/sigma are still
-    // correct, computed from current ratings). Bounded and acceptable for the
-    // single-admin tool; recomputeScores can always rebuild the true counts.
+    // Lock the two score rows FIRST. This serialises concurrent judgements that
+    // touch these questions, so the duplicate check below reliably sees a
+    // committed predecessor and the score read-modify-write is race-free.
+    // Precondition: both rows exist — openComparison seeds one per member before a
+    // campaign can reach `comparing`, and we've verified membership above — so
+    // FOR UPDATE locks real rows. (Lock order isn't pinned, so cross-pair
+    // deadlocks are theoretically possible; Postgres detects and aborts them.)
+    const rows = await tx
+      .select()
+      .from(score)
+      .where(and(eq(score.campaignId, campaignId), inArray(score.questionId, [questionAId, questionBId])))
+      .for('update')
+
+    // Reject if this judge has already judged this pair (either order).
+    const dupe = await tx
+      .select({ id: comparison.id })
+      .from(comparison)
+      .where(
+        and(
+          eq(comparison.campaignId, campaignId),
+          eq(comparison.judgeRef, judgeRef),
+          or(
+            and(eq(comparison.questionAId, questionAId), eq(comparison.questionBId, questionBId)),
+            and(eq(comparison.questionAId, questionBId), eq(comparison.questionBId, questionAId)),
+          ),
+        ),
+      )
+      .limit(1)
+    if (dupe.length > 0) throw new IneligibleError('You have already judged this pair')
+
     // Append to the immutable comparison log.
     await tx.insert(comparison).values({
       campaignId,
@@ -109,11 +141,7 @@ export async function recordComparison(input: RecordComparisonInput) {
       servedReason: input.servedReason ?? null,
     })
 
-    // Read current ratings (scores may already exist from openComparison).
-    const rows = await tx
-      .select()
-      .from(score)
-      .where(and(eq(score.campaignId, campaignId), inArray(score.questionId, [questionAId, questionBId])))
+    // Apply the TrueSkill update to the (locked) current ratings.
     const init = initialRating()
     const byId = new Map(rows.map((r) => [r.questionId, r]))
     const a = byId.get(questionAId)

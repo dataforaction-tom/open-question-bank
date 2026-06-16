@@ -130,6 +130,45 @@ describe('recordComparison', () => {
       recordComparison({ campaignId: cid, questionAId: a, questionBId: a, winnerQuestionId: a, judgeRef: 'admin' }),
     ).rejects.toBeInstanceOf(IneligibleError)
   })
+
+  it('rejects the same judge judging the same pair twice (either order)', async () => {
+    const a = await q('a')
+    const b = await q('b')
+    const cid = await openCampaignWith([a, b])
+    await recordComparison({ campaignId: cid, questionAId: a, questionBId: b, winnerQuestionId: a, judgeRef: 'j1' })
+    await expect(
+      recordComparison({ campaignId: cid, questionAId: a, questionBId: b, winnerQuestionId: b, judgeRef: 'j1' }),
+    ).rejects.toBeInstanceOf(IneligibleError)
+    await expect(
+      recordComparison({ campaignId: cid, questionAId: b, questionBId: a, winnerQuestionId: a, judgeRef: 'j1' }),
+    ).rejects.toBeInstanceOf(IneligibleError)
+  })
+
+  it('lets a different judge judge the same pair', async () => {
+    const a = await q('a')
+    const b = await q('b')
+    const cid = await openCampaignWith([a, b])
+    await recordComparison({ campaignId: cid, questionAId: a, questionBId: b, winnerQuestionId: a, judgeRef: 'j1' })
+    const res = await recordComparison({ campaignId: cid, questionAId: a, questionBId: b, winnerQuestionId: b, judgeRef: 'j2' })
+    expect(res.b.mu).toBeGreaterThan(res.a.mu)
+  })
+
+  it('serialises two concurrent judgements of the same pair — exactly one persists', async () => {
+    const a = await q('a')
+    const b = await q('b')
+    const cid = await openCampaignWith([a, b])
+    // The FOR UPDATE lock must make these two race-but-serialise: one wins,
+    // the other's duplicate guard fires. (Regression guard for the lock.)
+    const attempt = () =>
+      recordComparison({ campaignId: cid, questionAId: a, questionBId: b, winnerQuestionId: a, judgeRef: 'jc' })
+        .then(() => 'ok' as const)
+        .catch((e) => e)
+    const results = await Promise.all([attempt(), attempt()])
+    expect(results.filter((r) => r === 'ok')).toHaveLength(1)
+    expect(results.filter((r) => r instanceof IneligibleError)).toHaveLength(1)
+    const rows = await db.select().from(comparison).where(eq(comparison.campaignId, cid))
+    expect(rows).toHaveLength(1)
+  })
 })
 
 describe('nextPair', () => {
@@ -137,7 +176,7 @@ describe('nextPair', () => {
     const a = await q('a')
     const b = await q('b')
     const cid = await openCampaignWith([a, b])
-    const pair = await nextPair(cid)
+    const pair = await nextPair(cid, 'admin')
     expect(pair).not.toBeNull()
     expect(new Set([pair!.a.id, pair!.b.id])).toEqual(new Set([a, b]))
     expect(pair!.a.canonicalText).toBeTruthy()
@@ -145,12 +184,27 @@ describe('nextPair', () => {
   })
 
   it('404s on a missing campaign', async () => {
-    await expect(nextPair(MISSING)).rejects.toBeInstanceOf(NotFoundError)
+    await expect(nextPair(MISSING, 'admin')).rejects.toBeInstanceOf(NotFoundError)
   })
 
   it('rejects a campaign that is not comparing', async () => {
     const c = await createCampaign({ prompt: 'p', comparisonAxis: 'importance' })
-    await expect(nextPair(c.id)).rejects.toBeInstanceOf(IneligibleError)
+    await expect(nextPair(c.id, 'admin')).rejects.toBeInstanceOf(IneligibleError)
+  })
+
+  it('never serves a judge a pair they already judged', async () => {
+    const a = await q('a')
+    const b = await q('b')
+    const c = await q('c')
+    const cid = await openCampaignWith([a, b, c])
+    await recordComparison({ campaignId: cid, questionAId: a, questionBId: b, winnerQuestionId: a, judgeRef: 'j1' })
+    const pair = await nextPair(cid, 'j1')
+    expect(pair).not.toBeNull()
+    expect([pair!.a.id, pair!.b.id]).toContain(c)
+    await recordComparison({ campaignId: cid, questionAId: a, questionBId: c, winnerQuestionId: a, judgeRef: 'j1' })
+    await recordComparison({ campaignId: cid, questionAId: b, questionBId: c, winnerQuestionId: b, judgeRef: 'j1' })
+    expect(await nextPair(cid, 'j1')).toBeNull()
+    expect(await nextPair(cid, 'j2')).not.toBeNull()
   })
 })
 
