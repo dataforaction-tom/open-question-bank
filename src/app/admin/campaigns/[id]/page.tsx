@@ -197,6 +197,10 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
         )}
       </div>
 
+      {state === 'comparing' && (
+        <Stamp>Public judging link: /judge/{detail.campaign.id}</Stamp>
+      )}
+
       {state === 'comparing' && pair && (
         <Card className="space-y-3">
           <Stamp>{pair.servedReason}</Stamp>
