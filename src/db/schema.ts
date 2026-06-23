@@ -39,6 +39,9 @@ export const moderationActionEnum = pgEnum('moderation_action', ['approve', 'rej
 export const refinementSuggestedByEnum = pgEnum('refinement_suggested_by', ['llm', 'human'])
 export const refinementActionEnum = pgEnum('refinement_action', ['accept', 'reject', 'edit'])
 
+export const synthesisProposedByEnum = pgEnum('synthesis_proposed_by', ['llm', 'human'])
+export const synthesisStatusEnum = pgEnum('synthesis_status', ['proposed', 'rejected', 'superseded'])
+
 // One row per pinned-embedding configuration. Changing the embedding model mints a NEW row
 // (and, later, a re-embed migration). Exactly one row is active at a time (enforced below).
 export const datasetVersion = pgTable(
@@ -276,6 +279,34 @@ export const score = pgTable(
   ],
 )
 
+// Append-only-on-content synthesis records (spec §4, §7). proposals are persisted
+// (endorsed_by empty = proposal only); endorsement appends to endorsed_by; an edit
+// inserts a new version and supersedes the old row. Only endorsed_by/status mutate.
+export const synthesis = pgTable(
+  'synthesis',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    campaignId: uuid('campaign_id')
+      .notNull()
+      .references(() => campaign.id),
+    synthesisedText: text('synthesised_text').notNull(),
+    sourceQuestionIds: uuid('source_question_ids').array().notNull(), // lineage
+    rationale: text('rationale').notNull(),
+    version: integer('version').notNull().default(1),
+    supersedesId: uuid('supersedes_id').references((): AnyPgColumn => synthesis.id),
+    proposedBy: synthesisProposedByEnum('proposed_by').notNull(),
+    model: text('model'),
+    modelVersion: text('model_version'),
+    endorsedBy: text('endorsed_by')
+      .array()
+      .notNull()
+      .default(sql`'{}'`),
+    status: synthesisStatusEnum('status').notNull().default('proposed'),
+    timestamp: timestamp('timestamp', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('synthesis_campaign_idx').on(table.campaignId)],
+)
+
 export type Question = typeof question.$inferSelect
 export type NewQuestion = typeof question.$inferInsert
 export type DatasetVersion = typeof datasetVersion.$inferSelect
@@ -288,3 +319,4 @@ export type Campaign = typeof campaign.$inferSelect
 export type CampaignQuestion = typeof campaignQuestion.$inferSelect
 export type Comparison = typeof comparison.$inferSelect
 export type Score = typeof score.$inferSelect
+export type Synthesis = typeof synthesis.$inferSelect
