@@ -39,9 +39,30 @@ export type ScoreResult = z.infer<typeof scoreResultSchema> & {
   modelVersion: string
 }
 
+export const synthesisResultSchema = z.object({
+  proposals: z.array(
+    z.object({
+      synthesisedText: z.string().min(1),
+      sourceQuestionIds: z.array(z.string()).min(1),
+      rationale: z.string().min(1),
+    }),
+  ),
+})
+
+export type SynthesisResult = z.infer<typeof synthesisResultSchema> & {
+  model: string
+  modelVersion: string
+}
+
+export interface RankedQuestion {
+  id: string
+  canonicalText: string
+}
+
 export interface ReasoningProvider {
   refine(canonicalText: string): Promise<RefinementSuggestion>
   score(canonicalText: string): Promise<ScoreResult>
+  synthesise(ranked: RankedQuestion[]): Promise<SynthesisResult>
 }
 
 /** Raised on any LLM transport or output-validation failure → maps to HTTP 502. */
@@ -101,6 +122,25 @@ Return ONLY a JSON object with this exact shape:
 }`
 }
 
+export function buildSynthesisPrompt(ranked: RankedQuestion[]): string {
+  const list = ranked.map((r) => `- id ${r.id}: ${r.canonicalText}`).join('\n')
+  return `You synthesise a ranked set of related questions into a small number of
+clearer, higher-level questions that capture what the set is really asking.
+
+Ranked questions (most important first):
+${list}
+
+Propose 1 to 3 syntheses. Each must cite, in sourceQuestionIds, the ids of the
+questions above that it draws from (use the exact ids from the list). Return ONLY
+a JSON object with this exact shape:
+{
+  "proposals": [
+    { "synthesisedText": "the synthesised question", "sourceQuestionIds": ["<id>", ...], "rationale": "why these were combined" },
+    ...
+  ]
+}`
+}
+
 /** Shared chat-provider logic: call, zod-validate, retry once, resolve model_version. */
 abstract class ChatProvider implements ReasoningProvider {
   constructor(protected readonly model: string) {}
@@ -140,6 +180,10 @@ abstract class ChatProvider implements ReasoningProvider {
 
   async score(canonicalText: string): Promise<ScoreResult> {
     return this.complete(buildScoringPrompt(canonicalText), scoreResultSchema)
+  }
+
+  async synthesise(ranked: RankedQuestion[]): Promise<SynthesisResult> {
+    return this.complete(buildSynthesisPrompt(ranked), synthesisResultSchema)
   }
 }
 
@@ -242,6 +286,20 @@ export class MockProvider implements ReasoningProvider {
         score: 4,
         rationale: `mock ${criterion} rationale`,
       })),
+      model: 'mock',
+      modelVersion: 'mock',
+    }
+  }
+
+  async synthesise(ranked: RankedQuestion[]): Promise<SynthesisResult> {
+    return {
+      proposals: [
+        {
+          synthesisedText: 'Synthesis of the top questions',
+          sourceQuestionIds: ranked.slice(0, 2).map((r) => r.id),
+          rationale: 'Mock synthesis for end-to-end tests.',
+        },
+      ],
       model: 'mock',
       modelVersion: 'mock',
     }
