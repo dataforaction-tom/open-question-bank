@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Notice } from '@/components/ui/Notice'
 import { Stamp } from '@/components/ui/Stamp'
+import { SynthesisPanel } from '@/components/ui/SynthesisPanel'
 
 interface Member {
   id: string
@@ -204,6 +205,8 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
       {state === 'closed' && (
         <Stamp>Public agenda: /campaigns/{detail.campaign.id}</Stamp>
       )}
+
+      {state === 'closed' && <SynthesisPanel campaignId={detail.campaign.id} />}
 
       {state === 'comparing' && pair && (
         <Card className="space-y-3">
