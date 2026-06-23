@@ -155,7 +155,7 @@ describe('openComparison', () => {
 })
 
 describe('closeCampaign', () => {
-  it('closes and returns members to canonical', async () => {
+  it('closes and moves members to ranked', async () => {
     const c = await createCampaign({ prompt: 'p', comparisonAxis: 'importance' })
     const a = await q('a', 'canonical')
     const b = await q('b', 'canonical')
@@ -165,7 +165,7 @@ describe('closeCampaign', () => {
     expect(closed.state).toBe('closed')
     expect(closed.closesAt).toBeInstanceOf(Date)
     const [qa] = await db.select().from(question).where(eq(question.id, a))
-    expect(qa.state).toBe('canonical')
+    expect(qa.state).toBe('ranked')
   })
 
   it('rejects closing a non-comparing campaign', async () => {

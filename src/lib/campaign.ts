@@ -143,7 +143,7 @@ export async function closeCampaign(campaignId: string): Promise<Campaign> {
     if (members.length > 0) {
       await tx
         .update(question)
-        .set({ state: 'canonical' })
+        .set({ state: 'ranked' })
         .where(
           and(
             inArray(question.id, members.map((m) => m.questionId)),
