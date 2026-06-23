@@ -25,6 +25,11 @@ interface Evidence {
   servedReason: string | null
   timestamp: string
 }
+interface PublicSynthesis {
+  synthesisedText: string
+  rationale: string
+  sources: { questionId: string; canonicalText: string }[]
+}
 
 export default function AgendaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -33,6 +38,7 @@ export default function AgendaPage({ params }: { params: Promise<{ id: string }>
   const [message, setMessage] = useState('')
   const [tone, setTone] = useState<'info' | 'error'>('error')
   const [evidence, setEvidence] = useState<Record<string, Evidence[]>>({})
+  const [syntheses, setSyntheses] = useState<PublicSynthesis[]>([])
   const [openId, setOpenId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -41,6 +47,8 @@ export default function AgendaPage({ params }: { params: Promise<{ id: string }>
     const data = await res.json()
     if (res.ok) {
       setAgenda(data)
+      const sres = await fetch(`/api/campaigns/${id}/syntheses`)
+      if (sres.ok) setSyntheses((await sres.json()).syntheses)
     } else if (res.status === 409) {
       setTone('info')
       setMessage("This campaign's agenda isn't published yet.")
@@ -147,6 +155,30 @@ export default function AgendaPage({ params }: { params: Promise<{ id: string }>
           </li>
         ))}
       </ul>
+
+      {syntheses.length > 0 && (
+        <section className="space-y-3">
+          <p className="eyebrow">Synthesised questions</p>
+          <ul className="space-y-3 list-none p-0">
+            {syntheses.map((s, i) => (
+              <li key={i}>
+                <Card className="space-y-2">
+                  <p className="text-ink">{s.synthesisedText}</p>
+                  <p className="text-sm text-muted">{s.rationale}</p>
+                  <Stamp>Synthesised from:</Stamp>
+                  <ul className="space-y-1 list-none p-0">
+                    {s.sources.map((src) => (
+                      <li key={src.questionId} className="text-sm text-ink break-words">
+                        — {src.canonicalText}
+                      </li>
+                    ))}
+                  </ul>
+                </Card>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </PageShell>
   )
 }
