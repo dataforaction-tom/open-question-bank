@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prepareSubmission, createQuestion, type SubmitInput } from '@/lib/submission'
+import { listPublicQuestions } from '@/lib/discovery'
+import { mapPublicError } from '@/lib/api-errors'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -18,6 +20,14 @@ function isValid(body: unknown): body is RequestBody {
   if (b.rawText.trim().length > 2000) return false // questions are short; reject oversized input
   if (b.visibility !== 'anonymous' && b.visibility !== 'public') return false
   return true
+}
+
+export async function GET() {
+  try {
+    return NextResponse.json({ questions: await listPublicQuestions() })
+  } catch (err) {
+    return mapPublicError(err, '[GET /api/questions]')
+  }
 }
 
 export async function POST(request: Request) {
