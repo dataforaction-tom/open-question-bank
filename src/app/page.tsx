@@ -1,10 +1,11 @@
 import Link from 'next/link'
 import { PageShell } from '@/components/ui/PageShell'
+import { PublicNav } from '@/components/ui/PublicNav'
 import { buttonClasses } from '@/components/ui/Button'
 
 export default function Home() {
   return (
-    <PageShell>
+    <PageShell nav={<PublicNav />}>
       <div className="space-y-3">
         <p className="eyebrow">A collective instrument</p>
         <h1 className="text-4xl sm:text-5xl leading-[1.05]">
@@ -17,9 +18,15 @@ export default function Home() {
         synthesised agenda — every transformation logged, auditable, and open.
       </p>
 
-      <div>
+      <div className="flex flex-wrap gap-3">
         <Link href="/submit" className={buttonClasses('accent')}>
           Submit a question →
+        </Link>
+        <Link href="/campaigns" className={buttonClasses('ghost')}>
+          Browse campaigns
+        </Link>
+        <Link href="/questions" className={buttonClasses('ghost')}>
+          Browse questions
         </Link>
       </div>
     </PageShell>
