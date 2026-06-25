@@ -46,6 +46,9 @@ test('dashboards render with data', async ({ page, browser }) => {
   const anon = await browser.newContext()
   const vp = await anon.newPage()
   await vp.goto(`/campaigns/${campaign.id}`)
+  // The agenda now defaults to a plain-language view; the ranking-confidence chart lives behind
+  // the "How was this ranked?" disclosure. Open it to reach the chart + its accessible table.
+  await vp.getByText('How was this ranked?').click()
   await expect(vp.locator('p.eyebrow', { hasText: 'Ranking confidence' })).toBeVisible()
   // The accessible data-table equivalent is present.
   await vp.getByText('Show data table').first().click()
