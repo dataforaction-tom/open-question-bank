@@ -8,6 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint src/",
+    "db:migrate:test": "tsx scripts/migrate-test-db.ts",
+    "pretest": "npm run db:migrate:test",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
