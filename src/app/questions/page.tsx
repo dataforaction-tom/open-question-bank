@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
 import { PageShell } from '@/components/ui/PageShell'
 import { PublicNav } from '@/components/ui/PublicNav'
 import { Card } from '@/components/ui/Card'
@@ -58,7 +59,9 @@ export default function QuestionsIndexPage() {
           {questions.map((qn) => (
             <li key={qn.id}>
               <Card className="space-y-1">
-                <div className="break-words text-ink">{qn.canonicalText}</div>
+                <Link href={`/questions/${qn.id}`} className="break-words text-ink no-underline hover:underline">
+                  {qn.canonicalText}
+                </Link>
                 <Stamp>{qn.state}</Stamp>
               </Card>
             </li>

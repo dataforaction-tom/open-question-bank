@@ -5,9 +5,9 @@ import { usePathname } from 'next/navigation'
 
 const links = [
   { href: '/', label: 'Home' },
-  { href: '/submit', label: 'Submit' },
+  { href: '/browse', label: 'Browse' },
   { href: '/campaigns', label: 'Campaigns' },
-  { href: '/questions', label: 'Questions' },
+  { href: '/submit', label: 'Submit' },
 ]
 
 // Public header nav (mirrors AdminShell's nav styling), passed into PageShell's `nav` slot.

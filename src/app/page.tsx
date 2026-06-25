@@ -22,11 +22,11 @@ export default function Home() {
         <Link href="/submit" className={buttonClasses('accent')}>
           Submit a question →
         </Link>
+        <Link href="/browse" className={buttonClasses('ghost')}>
+          Search the bank
+        </Link>
         <Link href="/campaigns" className={buttonClasses('ghost')}>
           Browse campaigns
-        </Link>
-        <Link href="/questions" className={buttonClasses('ghost')}>
-          Browse questions
         </Link>
       </div>
     </PageShell>
