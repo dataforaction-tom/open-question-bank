@@ -6,7 +6,7 @@ Question Bank takes a messy pool of submitted questions and produces a trustwort
 
 Open source and **local-first**: the whole system runs on a single machine with no required external dependency. A hosted instance is offered too, on the same backend.
 
-> Status: **Slices 1–4 built**. The [technical specification](./question-bank-spec.md) is finalised (v0.1) and the first four vertical slices — submit → embed (pinned `nomic-embed-text`) → dedup-at-source, moderation + clustering, LLM-assisted refinement, and definedness scoring + curation — run locally with tests. Remaining slices (compare, rank, synthesise) are next.
+> Status: **Full pipeline built and tested.** The [technical specification](./question-bank-spec.md) is finalised (v0.1) and the whole spine runs locally with unit, integration, and end-to-end tests: submit → embed (pinned `nomic-embed-text`) → dedup-at-source → moderation + clustering → LLM-assisted refinement → definedness scoring + curation → pairwise comparison (TrueSkill, adaptive pairing) → ranked agenda → synthesis (LLM proposes, human endorses). A public discovery surface (campaign index, question bank, ranked agendas, open judging) is in place. The next steps — workspace scoping, full-text search, browsable similarity, campaign front doors, and dashboards — are tracked in the [improvement plan](./IMPROVEMENT-PLAN.md).
 
 ## The defensible core: the refinement log
 
@@ -67,6 +67,22 @@ Then open `http://localhost:3000/submit` and submit a question. Run the tests wi
 
 - [`question-bank-spec.md`](./question-bank-spec.md) — full technical specification (source of truth)
 - [`definedness-rubric.md`](./definedness-rubric.md) — the five definedness criteria, defined (open training-set docs)
+- [`IMPROVEMENT-PLAN.md`](./IMPROVEMENT-PLAN.md) — the v0.1 → v0.2 roadmap (see below)
+
+## Roadmap
+
+The pipeline above is complete. The [improvement plan](./IMPROVEMENT-PLAN.md) takes the app from a
+rigorous-but-narrow prioritisation instrument to the fuller product in the brief, phase by phase:
+
+1. **Workspace seam** — scope every query through a workspace so a hosted, multi-org future is an
+   additive change, not a rewrite (one default workspace for now).
+2. **Search & browsable similarity** — full-text search (Postgres `tsvector`) and "find similar"
+   (reusing existing embeddings, no re-embed), with a public browse surface.
+3. **Campaign front doors** — submit openly *or* into a specific campaign; a public campaign index.
+4. **Dashboards & charts** — a visual read layer (pipeline health, ranking confidence) on existing
+   data, themed to the palette and with accessible equivalents.
+5. **Polish & coherence** — consistent navigation, empty/loading/error states, responsive QA.
+6. **Full multi-tenancy** *(conditional)* — workspace lifecycle and isolation, built on the seam.
 
 ## Launch decisions (resolved)
 
