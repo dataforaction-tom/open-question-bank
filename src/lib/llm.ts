@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { THEMES } from '@/lib/themes'
 
 /** The five definedness criteria (mirrors definedness-rubric.md). */
 export const CRITERIA = ['specific', 'answerable', 'scoped', 'non-leading', 'single-barrelled'] as const
@@ -54,6 +55,15 @@ export type SynthesisResult = z.infer<typeof synthesisResultSchema> & {
   modelVersion: string
 }
 
+export const classifyResultSchema = z.object({
+  theme: z.enum(THEMES as unknown as [string, ...string[]]),
+})
+
+export type ClassifyResult = z.infer<typeof classifyResultSchema> & {
+  model: string
+  modelVersion: string
+}
+
 export interface RankedQuestion {
   id: string
   canonicalText: string
@@ -63,6 +73,7 @@ export interface ReasoningProvider {
   refine(canonicalText: string): Promise<RefinementSuggestion>
   score(canonicalText: string): Promise<ScoreResult>
   synthesise(ranked: RankedQuestion[]): Promise<SynthesisResult>
+  classify(canonicalText: string): Promise<ClassifyResult>
 }
 
 /** Raised on any LLM transport or output-validation failure → maps to HTTP 502. */
@@ -141,6 +152,15 @@ a JSON object with this exact shape:
 }`
 }
 
+export function buildClassifyPrompt(canonicalText: string): string {
+  return `Classify the civic question below into exactly ONE of these themes:
+${THEMES.map((t) => `- ${t}`).join('\n')}
+
+Return JSON: {"theme": "<one theme exactly as written above>"}.
+
+Question: ${canonicalText}`
+}
+
 /** Shared chat-provider logic: call, zod-validate, retry once, resolve model_version. */
 abstract class ChatProvider implements ReasoningProvider {
   constructor(protected readonly model: string) {}
@@ -184,6 +204,12 @@ abstract class ChatProvider implements ReasoningProvider {
 
   async synthesise(ranked: RankedQuestion[]): Promise<SynthesisResult> {
     return this.complete(buildSynthesisPrompt(ranked), synthesisResultSchema)
+  }
+
+  async classify(canonicalText: string): Promise<ClassifyResult> {
+    const result = await this.complete(buildClassifyPrompt(canonicalText), classifyResultSchema)
+    // `complete` already validated against THEMES via the enum schema.
+    return result
   }
 }
 
@@ -304,6 +330,36 @@ export class MockProvider implements ReasoningProvider {
       modelVersion: 'mock',
     }
   }
+
+  async classify(canonicalText: string): Promise<ClassifyResult> {
+    return { theme: classifyByKeyword(canonicalText), model: 'mock', modelVersion: 'mock' }
+  }
+}
+
+// Ordered keyword map for the deterministic mock classifier (spec §3). First match wins;
+// a stable hash fallback guarantees every input yields a valid theme. Co-designed with the
+// demo seed content so themes come out varied and sensible without a live model.
+const THEME_KEYWORDS: [string, string[]][] = [
+  ['Housing', ['housing', 'affordable home', 'rent', 'tenant', 'homeless', 'empty propert', 'landlord', 'homes']],
+  ['Climate & Environment', ['climate', 'net zero', 'carbon', ' tree', 'green space', 'recycl', 'litter', 'fly-tip', 'pollution', 'environment', 'park']],
+  ['Transport & Streets', ['cycle', 'cycling', 'bike', 'bus', 'walk', 'traffic', 'pavement', 'crossing', 'pothole', 'transport', 'travel', 'road']],
+  ['Health & Care', ['health', 'gp ', 'doctor', 'mental', 'carer', 'care', 'hospital', 'loneliness', 'wellbeing', 'nhs']],
+  ['Youth & Education', ['young people', 'youth', 'teenager', 'school', 'college', 'education', 'student', 'children', 'life skills']],
+  ['Local Economy', ['high street', 'shop', 'business', 'market', 'trader', 'job', 'employment', 'economy']],
+  ['Digital & Services', ['online', 'digital', 'internet', 'website', 'services move online']],
+  ['Democracy & Voice', ['decision-making', 'decision making', 'vote', 'voice', 'participation', 'consultation', 'budget', 'fund', 'fairest', 'left out']],
+  ['Community & Belonging', ['neighbour', 'community', 'belong', 'welcome', 'safe', 'together', 'volunteer', 'get to know']],
+]
+
+function classifyByKeyword(text: string): string {
+  const lower = text.toLowerCase()
+  for (const [theme, keywords] of THEME_KEYWORDS) {
+    if (keywords.some((k) => lower.includes(k))) return theme
+  }
+  // Deterministic fallback: stable hash over the text → a valid theme.
+  let hash = 0
+  for (let i = 0; i < text.length; i++) hash = (hash * 31 + text.charCodeAt(i)) >>> 0
+  return THEMES[hash % THEMES.length]
 }
 
 export function getProvider(): ReasoningProvider {
