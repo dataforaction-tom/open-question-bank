@@ -37,10 +37,14 @@ test('the public can submit into an open campaign', async ({ page, browser }) =>
   await vp.getByLabel('Your question').fill(questionText)
   await vp.getByRole('button', { name: 'Submit' }).click()
 
-  // Unique text → no dedup match expected, but handle the "choose new" branch defensively.
+  // Submit either creates directly or surfaces dedup candidates (the "choose new" branch).
+  // Wait for whichever resolves first — isVisible() alone races the async candidate lookup —
+  // then take the "new question" branch if it's offered.
   const chooseNew = vp.getByRole('button', { name: /None of these/ })
-  if (await chooseNew.isVisible().catch(() => false)) await chooseNew.click()
+  const success = vp.getByText(/added|Thanks/i)
+  await expect(chooseNew.or(success).first()).toBeVisible()
+  if (await chooseNew.isVisible()) await chooseNew.click()
 
-  await expect(vp.getByText(/added|Thanks/i)).toBeVisible()
+  await expect(success).toBeVisible()
   await anon.close()
 })

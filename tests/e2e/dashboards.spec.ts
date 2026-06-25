@@ -14,7 +14,9 @@ test('dashboards render with data', async ({ page, browser }) => {
   // Admin dashboard renders.
   await page.goto('/admin/dashboard')
   await expect(page.getByRole('heading', { name: 'Pipeline health' })).toBeVisible()
-  await expect(page.getByText('Questions by state')).toBeVisible()
+  // Scope to the visible chart heading; the chart also renders an sr-only <caption> with the
+  // same text for accessibility, so a bare getByText would match two nodes (strict-mode fail).
+  await expect(page.locator('p.eyebrow', { hasText: 'Questions by state' })).toBeVisible()
   await expect(page.getByText('Awaiting moderation')).toBeVisible()
 
   // Build a published agenda so the public ranking-confidence dashboard has data.
@@ -44,7 +46,7 @@ test('dashboards render with data', async ({ page, browser }) => {
   const anon = await browser.newContext()
   const vp = await anon.newPage()
   await vp.goto(`/campaigns/${campaign.id}`)
-  await expect(vp.getByText('Ranking confidence')).toBeVisible()
+  await expect(vp.locator('p.eyebrow', { hasText: 'Ranking confidence' })).toBeVisible()
   // The accessible data-table equivalent is present.
   await vp.getByText('Show data table').first().click()
   await expect(vp.getByRole('table').first()).toBeVisible()
