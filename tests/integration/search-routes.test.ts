@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 import { sql } from 'drizzle-orm'
 import { db, pool } from '@/db/client'
-import { comparison, datasetVersion, question, score } from '@/db/schema'
+import { campaign, campaignQuestion, comparison, datasetVersion, question, score } from '@/db/schema'
 import { GET as publicSearch } from '@/app/api/questions/search/route'
 import { GET as adminSearch } from '@/app/api/admin/questions/search/route'
 import { GET as questionDetail } from '@/app/api/questions/[id]/route'
@@ -39,7 +39,9 @@ const withParams = (id: string) => ({ params: Promise.resolve({ id }) })
 
 beforeEach(async () => {
   await db.execute(sql`TRUNCATE TABLE ${comparison} RESTART IDENTITY CASCADE`)
+  await db.execute(sql`TRUNCATE TABLE ${campaignQuestion} RESTART IDENTITY CASCADE`)
   await db.execute(sql`TRUNCATE TABLE ${score} RESTART IDENTITY CASCADE`)
+  await db.execute(sql`TRUNCATE TABLE ${campaign} RESTART IDENTITY CASCADE`)
   await db.execute(sql`TRUNCATE TABLE ${question} RESTART IDENTITY CASCADE`)
   await db.execute(sql`TRUNCATE TABLE ${datasetVersion} RESTART IDENTITY CASCADE`)
   await ensureDefaultWorkspace()
@@ -68,6 +70,21 @@ describe('GET /api/questions/search (public)', () => {
   it('400s on a malformed filter id', async () => {
     const res = await publicSearch(req('http://localhost/api/questions/search?q=x&cluster=not-a-uuid'))
     expect(res.status).toBe(400)
+  })
+
+  it('404s when filtering by a hidden (non-public) campaign — no membership leak', async () => {
+    const member = await q('resilience hidden member', 'canonical')
+    // A draft campaign (hidden from public surfaces) that nonetheless has a canonical member.
+    const [c] = await db
+      .insert(campaign)
+      .values({ prompt: 'secret draft', comparisonAxis: 'importance' })
+      .returning()
+    await db.insert(campaignQuestion).values({ campaignId: c.id, questionId: member })
+
+    const res = await publicSearch(
+      req(`http://localhost/api/questions/search?q=resilience&campaign=${c.id}`),
+    )
+    expect(res.status).toBe(404)
   })
 })
 

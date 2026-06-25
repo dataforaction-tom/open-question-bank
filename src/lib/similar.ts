@@ -1,4 +1,4 @@
-import { and, asc, cosineDistance, eq, inArray, ne, sql } from 'drizzle-orm'
+import { and, asc, cosineDistance, eq, inArray, isNotNull, ne, sql } from 'drizzle-orm'
 import { db } from '@/db/client'
 import { question } from '@/db/schema'
 import { NotFoundError } from '@/lib/errors'
@@ -70,6 +70,9 @@ export async function findSimilarQuestions(
         eq(question.datasetVersionId, source.datasetVersionId),
         ne(question.id, questionId),
         inArray(question.state, states),
+        // Skip embeddingless rows: their cosine distance is NULL and would otherwise map to 0
+        // (a false "perfect match") when the result set is under the limit.
+        isNotNull(question.embedding),
       ),
     )
     .orderBy(asc(distance))

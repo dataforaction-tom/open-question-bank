@@ -100,6 +100,16 @@ describe('findSimilarQuestions', () => {
     expect(await findSimilarQuestions(source)).toEqual([])
   })
 
+  it('excludes published neighbours that have no embedding (no false 0-distance match)', async () => {
+    const source = await q('source', [1, 0, 0])
+    const real = await q('real neighbour', [0.9, 0.1, 0])
+    await q('embeddingless canonical', null) // published but no vector — must not appear
+
+    const results = await findSimilarQuestions(source)
+    expect(results.map((r) => r.id)).toEqual([real])
+    expect(results.every((r) => Number.isFinite(r.distance))).toBe(true)
+  })
+
   it('throws NotFoundError for an unknown id', async () => {
     await expect(
       findSimilarQuestions('00000000-0000-0000-0000-0000000000ff'),

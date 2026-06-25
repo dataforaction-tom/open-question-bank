@@ -5,6 +5,7 @@ import {
   type DefinednessBand,
   type SearchFilters,
 } from '@/lib/search'
+import { getPublicCampaign } from '@/lib/discovery'
 import { mapPublicError } from '@/lib/api-errors'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -39,6 +40,10 @@ export async function GET(request: Request) {
   }
 
   try {
+    // Only allow filtering by a publicly-visible campaign (open/comparing/closed). Otherwise a
+    // known draft/synthesising campaign id could reveal its membership via search, even though the
+    // public campaign surfaces hide it. getPublicCampaign throws NotFound for hidden campaigns.
+    if (filters.campaignId) await getPublicCampaign(filters.campaignId)
     const result = await searchQuestions({
       query,
       filters,
