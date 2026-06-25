@@ -43,10 +43,20 @@ test('a closed campaign publishes a public ranked agenda', async ({ page, browse
   const vp = await anon.newPage()
   await vp.goto(`/campaigns/${campaign.id}`)
   await expect(vp.getByRole('heading', { name: `agenda campaign ${stamp}` })).toBeVisible()
-  // A ranks #1 (it won); reveal its evidence.
+
+  // A won every comparison, so it ranks #1 and reads as the clear favourite in plain language.
   const top = vp.locator('li', { hasText: `agenda option A ${stamp}` })
   await expect(top).toContainText('#1')
+  await expect(top.getByText('Clear favourite')).toBeVisible()
+
+  // The academic detail (μ/σ) is NOT visible by default — it lives in the collapsed disclosure.
+  await expect(vp.getByText(/μ/).first()).not.toBeVisible()
+  // Expanding "How was this ranked?" reveals the chart/table (μ becomes visible).
+  await vp.getByText('How was this ranked?').click()
+  await expect(vp.getByText('Ranking confidence').first()).toBeVisible()
+
+  // Evidence is plain language: A was "Chosen over" B.
   await top.getByRole('button', { name: 'Show evidence' }).click()
-  await expect(top.getByText(/won/)).toBeVisible()
+  await expect(top.getByText('Chosen over')).toBeVisible()
   await anon.close()
 })

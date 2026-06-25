@@ -8,6 +8,13 @@ import { Card } from '@/components/ui/Card'
 import { Notice } from '@/components/ui/Notice'
 import { Stamp } from '@/components/ui/Stamp'
 import { RankingConfidenceChart } from '@/components/charts/RankingConfidenceChart'
+import {
+  strengthPercent,
+  standingLabel,
+  confidenceLevel,
+  confidenceMeter,
+  outcomePhrase,
+} from '@/lib/agenda-presentation'
 
 interface Item {
   rank: number
@@ -104,6 +111,7 @@ export default function AgendaPage({ params }: { params: Promise<{ id: string }>
   }
 
   const closed = agenda.campaign.closesAt ? new Date(agenda.campaign.closesAt).toLocaleDateString() : null
+  const maxMu = agenda.items[0]?.mu ?? 0
 
   return (
     <PageShell nav={<PublicNav />}>
@@ -113,60 +121,88 @@ export default function AgendaPage({ params }: { params: Promise<{ id: string }>
         <Stamp>Final agenda{closed ? ` · closed ${closed}` : ''}</Stamp>
       </div>
 
-      <RankingConfidenceChart
-        items={agenda.items.map((it) => ({
-          rank: it.rank,
-          canonicalText: it.canonicalText,
-          mu: it.mu,
-          sigma: it.sigma,
-          nComparisons: it.nComparisons,
-        }))}
-      />
-
       <ul className="space-y-3 list-none p-0">
-        {agenda.items.map((item) => (
-          <li key={item.questionId}>
-            <Card className="space-y-2">
-              <div className="flex gap-3">
-                <span className="font-display text-xl text-moss shrink-0">#{item.rank}</span>
-                <div className="min-w-0 break-words text-ink">{item.canonicalText}</div>
-              </div>
-              <Stamp>
-                μ {item.mu.toFixed(1)} · σ {item.sigma.toFixed(1)} · {item.nComparisons} comparisons
-              </Stamp>
-              <Button
-                type="button"
-                variant="quiet"
-                onClick={() => toggle(item.questionId)}
-                disabled={busy}
-              >
-                {openId === item.questionId ? 'Hide evidence' : 'Show evidence'}
-              </Button>
-              {openId === item.questionId &&
-                (evidence[item.questionId] ? (
-                  <ul className="space-y-1 list-none p-0">
-                    {evidence[item.questionId].length === 0 ? (
-                      <li className="text-sm text-muted">No comparisons recorded.</li>
+        {agenda.items.map((item) => {
+          const ratio = maxMu > 0 ? item.mu / maxMu : 1
+          const pct = strengthPercent(item.mu, maxMu)
+          const label = standingLabel(item.rank, ratio)
+          const meter = confidenceMeter(confidenceLevel(item.sigma))
+          const items = evidence[item.questionId]
+          return (
+            <li key={item.questionId}>
+              <Card className="space-y-3">
+                <div className="flex gap-3">
+                  <span className="font-display text-xl text-moss shrink-0">#{item.rank}</span>
+                  <div className="min-w-0 break-words text-ink">{item.canonicalText}</div>
+                </div>
+
+                {/* Relative strength bar (decorative — the label carries the meaning). */}
+                <div aria-hidden="true" className="h-2 w-full overflow-hidden rounded-full bg-line">
+                  <div className="h-full rounded-full bg-moss" style={{ width: `${pct}%` }} />
+                </div>
+
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-ink">{label}</span>
+                  <span title={meter.label} aria-label={meter.label} className="shrink-0 text-sm tracking-widest">
+                    {[0, 1, 2].map((i) => (
+                      <span key={i} aria-hidden="true" className={i < meter.filled ? 'text-moss' : 'text-line'}>
+                        ●
+                      </span>
+                    ))}
+                  </span>
+                </div>
+
+                <Button type="button" variant="quiet" onClick={() => toggle(item.questionId)} disabled={busy}>
+                  {openId === item.questionId ? 'Hide evidence' : 'Show evidence'}
+                </Button>
+
+                {openId === item.questionId &&
+                  (items ? (
+                    items.length === 0 ? (
+                      <p className="text-sm text-muted">No comparisons recorded.</p>
                     ) : (
-                      evidence[item.questionId].map((e, i) => (
-                        <li key={i} className="text-sm text-ink">
-                          <span className="font-medium">{e.outcome}</span> vs &quot;{e.opponentText}&quot;
-                          {e.servedReason && <Stamp>{e.servedReason}</Stamp>}
-                        </li>
-                      ))
-                    )}
-                  </ul>
-                ) : (
-                  // Open but no cached evidence: either still loading, or the fetch
-                  // failed — say so rather than leaving a blank, confusing panel.
-                  <p className="text-sm text-muted">
-                    {busy ? 'Loading evidence…' : 'Couldn’t load evidence — try again.'}
-                  </p>
-                ))}
-            </Card>
-          </li>
-        ))}
+                      <div className="space-y-1">
+                        <p className="text-sm text-muted">
+                          Compared head-to-head {item.nComparisons} {item.nComparisons === 1 ? 'time' : 'times'}.
+                        </p>
+                        <ul className="space-y-1 list-none p-0">
+                          {items.map((e, i) => (
+                            <li key={i} className="text-sm text-ink">
+                              <span className="font-medium">{outcomePhrase(e.outcome)}:</span> &quot;{e.opponentText}&quot;
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )
+                  ) : (
+                    <p className="text-sm text-muted">
+                      {busy ? 'Loading evidence…' : "Couldn’t load evidence — try again."}
+                    </p>
+                  ))}
+              </Card>
+            </li>
+          )
+        })}
       </ul>
+
+      <details className="text-sm">
+        <summary className="cursor-pointer text-muted">How was this ranked?</summary>
+        <div className="mt-3 space-y-3">
+          <p className="text-muted">
+            People compared these questions two at a time. Each choice nudges a question up or down;
+            the scores and certainty below come from those head-to-head choices.
+          </p>
+          <RankingConfidenceChart
+            items={agenda.items.map((it) => ({
+              rank: it.rank,
+              canonicalText: it.canonicalText,
+              mu: it.mu,
+              sigma: it.sigma,
+              nComparisons: it.nComparisons,
+            }))}
+          />
+        </div>
+      </details>
 
       {syntheses.length > 0 && (
         <section className="space-y-3">
