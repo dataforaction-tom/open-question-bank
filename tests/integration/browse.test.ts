@@ -81,9 +81,53 @@ describe('topOfRecentCampaigns', () => {
     expect(rows[0].campaignPrompt).toBe('Budget priorities')
     expect(rows[0].comparisonAxis).toBe('importance')
   })
+
+  it('excludes campaigns in comparing/draft state', async () => {
+    // closed campaign — should appear
+    const closedWinner = await insertQ({ text: 'closed winner', state: 'ranked', theme: 'Housing' })
+    const closedLoser = await insertQ({ text: 'closed loser', state: 'ranked', theme: 'Housing' })
+    const [closedC] = await db
+      .insert(campaign)
+      .values({ prompt: 'Closed campaign', comparisonAxis: 'impact', state: 'closed', closesAt: new Date('2026-01-01') })
+      .returning()
+    await db.insert(score).values([
+      { campaignId: closedC.id, questionId: closedWinner, mu: 30, sigma: 3, nComparisons: 4 },
+      { campaignId: closedC.id, questionId: closedLoser, mu: 20, sigma: 3, nComparisons: 4 },
+    ])
+
+    // comparing campaign — must NOT appear
+    const compQ1 = await insertQ({ text: 'comparing q1', state: 'ranked', theme: 'Housing' })
+    const compQ2 = await insertQ({ text: 'comparing q2', state: 'ranked', theme: 'Housing' })
+    const [comparingC] = await db
+      .insert(campaign)
+      .values({ prompt: 'Comparing campaign', comparisonAxis: 'importance', state: 'comparing', closesAt: new Date('2026-02-01') })
+      .returning()
+    await db.insert(score).values([
+      { campaignId: comparingC.id, questionId: compQ1, mu: 35, sigma: 2, nComparisons: 5 },
+      { campaignId: comparingC.id, questionId: compQ2, mu: 25, sigma: 2, nComparisons: 5 },
+    ])
+
+    const rows = await topOfRecentCampaigns(6)
+    expect(rows).toHaveLength(1)
+    expect(rows[0].canonicalText).toBe('closed winner')
+  })
 })
 
 describe('mostAskedQuestions', () => {
+  it('excludes clusters whose members are all in submitted state', async () => {
+    // cluster with only submitted members — must NOT appear in results
+    const submittedQ = await insertQ({ text: 'submitted only', state: 'submitted' })
+    const [cl] = await db
+      .insert(cluster)
+      .values({ datasetVersionId: versionId, representativeQuestionId: submittedQ, thresholdUsed: 0.3 })
+      .returning()
+    await db.update(question).set({ clusterId: cl.id }).where(sql`${question.id} = ${submittedQ}`)
+
+    const rows = await mostAskedQuestions(6)
+    expect(rows.every((r) => r.canonicalText !== 'submitted only')).toBe(true)
+    expect(rows).toHaveLength(0)
+  })
+
   it('ranks by canonical/ranked cluster size and shows a canonical member', async () => {
     const [cl] = await db
       .insert(cluster)

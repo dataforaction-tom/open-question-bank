@@ -39,7 +39,7 @@ export async function topOfRecentCampaigns(
       FROM campaign c
       JOIN score s ON s.campaign_id = c.id
       JOIN question q ON q.id = s.question_id
-      WHERE c.workspace_id = ${ws} AND c.state = 'closed' AND q.state IN ('canonical','ranked')
+      WHERE c.workspace_id = ${ws} AND c.state = 'closed' AND q.workspace_id = ${ws} AND q.state IN ('canonical','ranked')
       ORDER BY c.id, s.mu DESC, s.sigma ASC
     ) top
     ORDER BY top.closes_at DESC NULLS LAST
