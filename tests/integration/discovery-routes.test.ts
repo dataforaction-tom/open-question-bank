@@ -47,11 +47,11 @@ afterAll(async () => {
 })
 
 describe('GET /api/campaigns', () => {
-  it('200 with the two groups (empty when nothing closed/comparing)', async () => {
+  it('200 with the public groups (empty when nothing open/closed/comparing)', async () => {
     const res = await campaignsGet()
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body).toEqual({ published: [], openForJudging: [] })
+    expect(body).toEqual({ published: [], openForJudging: [], openForSubmission: [] })
   })
 
   it('lists a comparing campaign under openForJudging', async () => {

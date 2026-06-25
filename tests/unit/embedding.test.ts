@@ -6,6 +6,7 @@ vi.mock('@/lib/ollama', () => ({
 vi.mock('@/lib/dataset-version', () => ({
   getActiveDatasetVersion: vi.fn().mockResolvedValue({
     id: 1,
+    workspaceId: '00000000-0000-0000-0000-000000000001',
     embeddingModel: 'nomic-embed-text',
     embeddingModelDigest: 'sha256:abc',
     embeddingDim: 768,
@@ -28,6 +29,7 @@ describe('embedForActiveVersion', () => {
     expect(result.embedding).toEqual([0.1, 0.2, 0.3])
     expect(result.embeddingModelVersion).toBe('nomic-embed-text@sha256:abc')
     expect(result.datasetVersionId).toBe(1)
+    expect(result.workspaceId).toBe('00000000-0000-0000-0000-000000000001')
     expect(result.dedupThreshold).toBe(0.15)
   })
 })

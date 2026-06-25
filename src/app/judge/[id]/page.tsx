@@ -2,6 +2,7 @@
 
 import { use, useCallback, useEffect, useState } from 'react'
 import { PageShell } from '@/components/ui/PageShell'
+import { PublicNav } from '@/components/ui/PublicNav'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Notice } from '@/components/ui/Notice'
@@ -78,14 +79,14 @@ export default function JudgePage({ params }: { params: Promise<{ id: string }> 
 
   if (!loaded) {
     return (
-      <PageShell>
+      <PageShell nav={<PublicNav />}>
         <p className="text-muted">Loading…</p>
       </PageShell>
     )
   }
 
   return (
-    <PageShell>
+    <PageShell nav={<PublicNav />}>
       {/* Every message routed here is a problem (network/record failure, or the
           campaign being unavailable) — use the alert tone so assistive tech
           announces it. The positive end-state is a separate <p> below. */}

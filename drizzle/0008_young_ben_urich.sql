@@ -1,0 +1,2 @@
+ALTER TABLE "question" ADD COLUMN "search_vector" "tsvector" GENERATED ALWAYS AS (to_tsvector('english', canonical_text)) STORED;--> statement-breakpoint
+CREATE INDEX "question_search_gin" ON "question" USING gin ("search_vector");

@@ -21,6 +21,7 @@ interface PublicCampaign {
 export default function CampaignsIndexPage() {
   const [published, setPublished] = useState<PublicCampaign[]>([])
   const [openForJudging, setOpenForJudging] = useState<PublicCampaign[]>([])
+  const [openForSubmission, setOpenForSubmission] = useState<PublicCampaign[]>([])
   const [loaded, setLoaded] = useState(false)
   const [message, setMessage] = useState('')
 
@@ -31,6 +32,7 @@ export default function CampaignsIndexPage() {
         const data = await res.json()
         setPublished(data.published)
         setOpenForJudging(data.openForJudging)
+        setOpenForSubmission(data.openForSubmission ?? [])
       } else {
         setMessage('Could not load campaigns.')
       }
@@ -61,6 +63,34 @@ export default function CampaignsIndexPage() {
       {/* Hide the lists on error so the failure isn't mistaken for an empty index. */}
       {!message && (
         <>
+          <section className="space-y-3">
+            <p className="eyebrow">Open for submission</p>
+            {!loaded ? (
+              <p className="text-muted">Loading…</p>
+            ) : openForSubmission.length === 0 ? (
+              <EmptyState>No campaigns are accepting submissions right now.</EmptyState>
+            ) : (
+              <ul className="space-y-3 list-none p-0">
+                {openForSubmission.map((c) => (
+                  <li key={c.id}>
+                    <Card className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="break-words text-ink">{c.prompt}</div>
+                        <Stamp>{c.comparisonAxis}</Stamp>
+                      </div>
+                      <Link
+                        href={`/campaigns/${c.id}/submit`}
+                        className={buttonClasses('accent', 'shrink-0 self-start sm:self-auto')}
+                      >
+                        Submit a question →
+                      </Link>
+                    </Card>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
           <section className="space-y-3">
             <p className="eyebrow">Published agendas</p>
         {!loaded ? (

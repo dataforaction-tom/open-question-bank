@@ -14,8 +14,18 @@ import {
   index,
   uniqueIndex,
   check,
+  customType,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core'
+
+// Postgres full-text search vector (improvement plan, Phase 2). Maintained by Postgres as a
+// generated column over canonical_text — independent of embeddings, so it never touches the
+// reproducibility-pinned vector column.
+const tsvector = customType<{ data: string }>({
+  dataType() {
+    return 'tsvector'
+  },
+})
 
 export const visibilityEnum = pgEnum('visibility', ['anonymous', 'public'])
 
@@ -42,12 +52,35 @@ export const refinementActionEnum = pgEnum('refinement_action', ['accept', 'reje
 export const synthesisProposedByEnum = pgEnum('synthesis_proposed_by', ['llm', 'human'])
 export const synthesisStatusEnum = pgEnum('synthesis_status', ['proposed', 'rejected', 'superseded'])
 
+// ---- Workspace seam (improvement plan, Phase 1) ----
+// A structural seam so the multi-tenancy decision stays cheap: every top-level entity carries a
+// workspaceId, and reads/writes scope through it, even though exactly one workspace exists today.
+// The fixed default-workspace id is the column DEFAULT below, so direct inserts that predate the
+// seam (and tests) still land in the right workspace without code changes.
+export const DEFAULT_WORKSPACE_ID = '00000000-0000-0000-0000-000000000001'
+export const DEFAULT_WORKSPACE_SLUG = 'default'
+
+export const workspace = pgTable(
+  'workspace',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    slug: text('slug').notNull(),
+    name: text('name').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex('workspace_slug_unique').on(table.slug)],
+)
+
 // One row per pinned-embedding configuration. Changing the embedding model mints a NEW row
-// (and, later, a re-embed migration). Exactly one row is active at a time (enforced below).
+// (and, later, a re-embed migration). Exactly one row is active per workspace (enforced below).
 export const datasetVersion = pgTable(
   'dataset_version',
   {
     id: serial('id').primaryKey(),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .default(DEFAULT_WORKSPACE_ID)
+      .references(() => workspace.id),
     embeddingModel: text('embedding_model').notNull(),
     embeddingModelDigest: text('embedding_model_digest').notNull(),
     embeddingDim: integer('embedding_dim').notNull(),
@@ -57,11 +90,12 @@ export const datasetVersion = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    // At most one active version — protects the reproducibility commitment and closes the
-    // read-then-insert race in ensureActiveDatasetVersion.
-    uniqueIndex('one_active_dataset_version')
-      .on(table.isActive)
+    // At most one active version PER WORKSPACE — protects the reproducibility commitment and
+    // closes the read-then-insert race in ensureActiveDatasetVersion.
+    uniqueIndex('one_active_dataset_version_per_workspace')
+      .on(table.workspaceId)
       .where(sql`${table.isActive} = true`),
+    index('dataset_version_workspace_idx').on(table.workspaceId),
   ],
 )
 
@@ -73,6 +107,10 @@ export const question = pgTable(
     canonicalText: text('canonical_text').notNull(), // current best form (= raw_text at submit)
     embedding: vector('embedding', { dimensions: 768 }),
     embeddingModelVersion: text('embedding_model_version').notNull(),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .default(DEFAULT_WORKSPACE_ID)
+      .references(() => workspace.id),
     datasetVersionId: integer('dataset_version_id')
       .notNull()
       .references(() => datasetVersion.id),
@@ -83,12 +121,24 @@ export const question = pgTable(
     theme: text('theme'),
     clusterId: uuid('cluster_id').references((): AnyPgColumn => cluster.id),
     canonicalOf: uuid('canonical_of').references((): AnyPgColumn => question.id),
+    // Submission-time SIGNAL only (improvement plan, Phase 3): the campaign a question was
+    // submitted into. Admin curation (campaignQuestion) remains the gate into the comparison set;
+    // this never auto-joins a campaign and never bypasses moderation.
+    originatingCampaignId: uuid('originating_campaign_id').references((): AnyPgColumn => campaign.id),
+    // Generated full-text vector over the current canonical text; drives keyword search.
+    searchVector: tsvector('search_vector').generatedAlwaysAs(
+      sql`to_tsvector('english', canonical_text)`,
+    ),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     // HNSW index for fast cosine-distance nearest-neighbour (dedup + clustering).
     index('question_embedding_hnsw').using('hnsw', table.embedding.op('vector_cosine_ops')),
     index('question_dataset_version_idx').on(table.datasetVersionId),
+    index('question_workspace_idx').on(table.workspaceId),
+    index('question_originating_campaign_idx').on(table.originatingCampaignId),
+    // GIN index for fast full-text matching/ranking.
+    index('question_search_gin').using('gin', table.searchVector),
   ],
 )
 
@@ -197,16 +247,24 @@ export const campaignStateEnum = pgEnum('campaign_state', [
   'closed',
 ])
 
-export const campaign = pgTable('campaign', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  prompt: text('prompt').notNull(),
-  comparisonAxis: text('comparison_axis').notNull(), // free-text, e.g. "importance"
-  scope: campaignScopeEnum('scope').notNull().default('sealed'),
-  state: campaignStateEnum('state').notNull().default('draft'),
-  opensAt: timestamp('opens_at', { withTimezone: true }),
-  closesAt: timestamp('closes_at', { withTimezone: true }),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-})
+export const campaign = pgTable(
+  'campaign',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .default(DEFAULT_WORKSPACE_ID)
+      .references(() => workspace.id),
+    prompt: text('prompt').notNull(),
+    comparisonAxis: text('comparison_axis').notNull(), // free-text, e.g. "importance"
+    scope: campaignScopeEnum('scope').notNull().default('sealed'),
+    state: campaignStateEnum('state').notNull().default('draft'),
+    opensAt: timestamp('opens_at', { withTimezone: true }),
+    closesAt: timestamp('closes_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('campaign_workspace_idx').on(table.workspaceId)],
+)
 
 // Sealed membership: the explicit set of canonical questions a campaign ranks.
 export const campaignQuestion = pgTable(
@@ -307,6 +365,7 @@ export const synthesis = pgTable(
   (table) => [index('synthesis_campaign_idx').on(table.campaignId)],
 )
 
+export type Workspace = typeof workspace.$inferSelect
 export type Question = typeof question.$inferSelect
 export type NewQuestion = typeof question.$inferInsert
 export type DatasetVersion = typeof datasetVersion.$inferSelect

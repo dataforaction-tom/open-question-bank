@@ -2,10 +2,12 @@
 
 import { use, useCallback, useEffect, useState } from 'react'
 import { PageShell } from '@/components/ui/PageShell'
+import { PublicNav } from '@/components/ui/PublicNav'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Notice } from '@/components/ui/Notice'
 import { Stamp } from '@/components/ui/Stamp'
+import { RankingConfidenceChart } from '@/components/charts/RankingConfidenceChart'
 
 interface Item {
   rank: number
@@ -85,7 +87,7 @@ export default function AgendaPage({ params }: { params: Promise<{ id: string }>
 
   if (!loaded) {
     return (
-      <PageShell>
+      <PageShell nav={<PublicNav />}>
         <p className="text-muted">Loading…</p>
       </PageShell>
     )
@@ -93,7 +95,7 @@ export default function AgendaPage({ params }: { params: Promise<{ id: string }>
 
   if (!agenda) {
     return (
-      <PageShell>
+      <PageShell nav={<PublicNav />}>
         <Notice role={tone === 'error' ? 'alert' : 'status'} tone={tone}>
           {message}
         </Notice>
@@ -104,12 +106,22 @@ export default function AgendaPage({ params }: { params: Promise<{ id: string }>
   const closed = agenda.campaign.closesAt ? new Date(agenda.campaign.closesAt).toLocaleDateString() : null
 
   return (
-    <PageShell>
+    <PageShell nav={<PublicNav />}>
       <div className="space-y-1">
         <p className="eyebrow">{agenda.campaign.comparisonAxis}</p>
         <h1 className="text-3xl">{agenda.campaign.prompt}</h1>
         <Stamp>Final agenda{closed ? ` · closed ${closed}` : ''}</Stamp>
       </div>
+
+      <RankingConfidenceChart
+        items={agenda.items.map((it) => ({
+          rank: it.rank,
+          canonicalText: it.canonicalText,
+          mu: it.mu,
+          sigma: it.sigma,
+          nComparisons: it.nComparisons,
+        }))}
+      />
 
       <ul className="space-y-3 list-none p-0">
         {agenda.items.map((item) => (
