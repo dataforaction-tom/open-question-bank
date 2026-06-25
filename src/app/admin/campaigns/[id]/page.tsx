@@ -97,15 +97,19 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
     }
   }
 
-  async function transition(path: 'open' | 'close') {
+  async function transition(path: 'open' | 'close' | 'open-submission') {
     setBusy(true)
     setMessage('')
     try {
       const res = await fetch(`/api/admin/campaigns/${id}/${path}`, { method: 'POST' })
       const data = await res.json()
-      if (!res.ok) setMessage(data.error ?? 'Error')
-      setPair(null)
-      await load()
+      if (!res.ok) {
+        // Keep the current pair on a failed transition — don't drop the admin's context.
+        setMessage(data.error ?? 'Error')
+      } else {
+        setPair(null)
+        await load()
+      }
     } catch {
       setMessage('Network error — please try again.')
     } finally {
@@ -182,6 +186,11 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
 
       <div className="flex flex-wrap gap-2">
         {state === 'draft' && (
+          <Button type="button" variant="ghost" onClick={() => transition('open-submission')} disabled={busy}>
+            Open for submission
+          </Button>
+        )}
+        {(state === 'draft' || state === 'open') && (
           <Button type="button" onClick={() => transition('open')} disabled={busy}>
             Open for comparison
           </Button>
@@ -197,6 +206,10 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
           </>
         )}
       </div>
+
+      {state === 'open' && (
+        <Stamp>Public submission link: /campaigns/{detail.campaign.id}/submit</Stamp>
+      )}
 
       {state === 'comparing' && (
         <Stamp>Public judging link: /judge/{detail.campaign.id}</Stamp>
@@ -242,7 +255,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
         )}
       </section>
 
-      {state === 'draft' && (
+      {(state === 'draft' || state === 'open') && (
         <section className="space-y-2">
           <p className="eyebrow">Add canonical questions</p>
           {addable.length === 0 ? (

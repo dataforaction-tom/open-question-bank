@@ -1,0 +1,3 @@
+ALTER TABLE "question" ADD COLUMN "originating_campaign_id" uuid;--> statement-breakpoint
+ALTER TABLE "question" ADD CONSTRAINT "question_originating_campaign_id_campaign_id_fk" FOREIGN KEY ("originating_campaign_id") REFERENCES "public"."campaign"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "question_originating_campaign_idx" ON "question" USING btree ("originating_campaign_id");
