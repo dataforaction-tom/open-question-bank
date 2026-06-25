@@ -1,8 +1,9 @@
-import { afterAll, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { eq, sql } from 'drizzle-orm'
 import { db, pool } from '@/db/client'
 import { cluster, datasetVersion, moderationEvent, question } from '@/db/schema'
 import { approveQuestion, listPending, rejectQuestion } from '@/lib/moderation'
+import { MockProvider } from '@/lib/llm'
 
 let versionId: number
 
@@ -42,6 +43,7 @@ beforeEach(async () => {
     })
     .returning()
   versionId = v.id
+  vi.stubEnv('REASONING_PROVIDER', 'mock')
 })
 afterAll(async () => {
   await pool.end()
@@ -78,6 +80,28 @@ describe('approveQuestion', () => {
     await expect(approveQuestion(id, 'admin')).rejects.toThrow(/not pending/)
     const events = await db.select().from(moderationEvent).where(eq(moderationEvent.questionId, id))
     expect(events).toHaveLength(1)
+  })
+
+  it('auto-classifies the question theme on approval', async () => {
+    const id = await insertSubmitted('How can we add protected cycle lanes on busy roads?', [1, 0, 0])
+    await approveQuestion(id, 'admin', new MockProvider())
+    const [row] = await db.select().from(question).where(eq(question.id, id)).limit(1)
+    expect(row.state).toBe('clustered')
+    expect(row.theme).toBe('Transport & Streets')
+  })
+
+  it('still approves when classification fails (advisory)', async () => {
+    const id = await insertSubmitted('A neutral question with no theme keyword', [0, 1, 0])
+    const failing = {
+      ...new MockProvider(),
+      classify: async () => {
+        throw new Error('provider down')
+      },
+    }
+    await approveQuestion(id, 'admin', failing)
+    const [row] = await db.select().from(question).where(eq(question.id, id)).limit(1)
+    expect(row.state).toBe('clustered')
+    expect(row.theme).toBeNull()
   })
 
   it('rolls back the approval (event + state) when the question has no embedding', async () => {
