@@ -7,6 +7,7 @@ import { PageShell } from './PageShell'
 import { Button } from './Button'
 
 const links = [
+  { href: '/admin/dashboard', label: 'Dashboard' },
   { href: '/admin/moderation', label: 'Moderation' },
   { href: '/admin/curation', label: 'Curation' },
   { href: '/admin/refinement', label: 'Refinement' },
