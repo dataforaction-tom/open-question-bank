@@ -13,7 +13,8 @@
     "test:e2e": "playwright test",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:seed": "tsx scripts/seed-dataset-version.ts"
+    "db:seed": "tsx scripts/seed-dataset-version.ts",
+    "db:seed:demo": "REASONING_PROVIDER=mock tsx scripts/seed-demo.ts"
   },
   "dependencies": {
     "dotenv": "^17.4.2",
