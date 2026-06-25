@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
+import { ThemeSwitcher } from './ThemeSwitcher'
 
 type Size = 'sm' | 'md' | 'lg'
 
@@ -30,12 +31,12 @@ export function PageShell({ children, nav, actions, size = 'md' }: PageShellProp
           >
             Question Bank
           </Link>
-          {(nav || actions) && (
-            <nav className="flex items-center gap-5 text-sm">
-              {nav}
-              {actions}
-            </nav>
-          )}
+          {/* Switcher is always present; nav/actions fill in per page. */}
+          <nav className="flex items-center gap-5 text-sm">
+            {nav}
+            {actions}
+            <ThemeSwitcher />
+          </nav>
         </div>
       </header>
       <main className={`reveal mx-auto ${width} px-6 py-12 space-y-6`}>{children}</main>

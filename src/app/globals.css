@@ -1,14 +1,16 @@
 @import 'tailwindcss';
 
 /*
- * "Warm Civic" design tokens.
- *
- * The palette lives in plain custom properties so it can be re-themed at runtime
- * (dark mode below just overrides these). `@theme inline` then exposes them to
- * Tailwind as utilities (bg-paper, text-ink, border-line, font-display, …) that
- * reference the variable rather than baking in a fixed value.
+ * Theme palettes. Each theme is a full skin — palette, display font, and paper
+ * texture. `:root` carries the Warm Civic Light defaults so a no-JS page still
+ * renders correctly; the explicit `[data-theme]` blocks are what the theme switcher
+ * selects at runtime. An inline <head> script sets `data-theme` before paint to
+ * avoid a flash (see src/lib/ui-theme.ts). Values use indirection (`--paper`,
+ * `--display`, `--grain`) so the `@theme inline` block and base layer below stay
+ * theme-agnostic and read whichever palette is active.
  */
-:root {
+:root,
+[data-theme='warm-civic'] {
   --paper: #fbf7f0; /* warm oat — page background */
   --surface: #ece3d4; /* sand — cards / raised surfaces */
   --ink: #211c16; /* warm near-black — body text */
@@ -17,19 +19,35 @@
   --clay: #c2542a; /* secondary CTA pop */
   --sage: #8aa293; /* metadata / quiet text */
   --line: #e0d6c5; /* hairline rules / borders */
+  --display: var(--font-fraunces), Georgia, 'Times New Roman', serif;
+  --grain: 0.03; /* paper texture strength */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #1a1714; /* warm espresso, never pure black */
-    --surface: #241f1a;
-    --ink: #f0e9dd;
-    --muted: #a89e8e;
-    --moss: #7fb79a; /* lifted for legibility on dark */
-    --clay: #e2774a;
-    --sage: #6e7e72;
-    --line: #3a332c;
-  }
+[data-theme='warm-civic-dark'] {
+  --paper: #1a1714; /* warm espresso, never pure black */
+  --surface: #241f1a;
+  --ink: #f0e9dd;
+  --muted: #a89e8e;
+  --moss: #7fb79a; /* lifted for legibility on dark */
+  --clay: #e2774a;
+  --sage: #6e7e72;
+  --line: #3a332c;
+  --display: var(--font-fraunces), Georgia, 'Times New Roman', serif;
+  --grain: 0.03;
+}
+
+/* Climate Barometer — cool blue/white, fully sans-serif, no paper texture. */
+[data-theme='climate-barometer'] {
+  --paper: #f7f9fb; /* cool near-white page */
+  --surface: #eef3f7; /* cards / raised surfaces */
+  --ink: #13293d; /* dark slate body text */
+  --muted: #5a6b7a; /* secondary text */
+  --moss: #1d6fb8; /* brand blue — links, headers, primary button */
+  --clay: #0f8a8a; /* teal pop (kept cool, not orange) */
+  --sage: #8fa6b8; /* quiet metadata */
+  --line: #dbe4ec; /* hairline rules / borders */
+  --display: var(--font-public-sans), ui-sans-serif, system-ui, sans-serif;
+  --grain: 0; /* no paper texture */
 }
 
 @theme inline {
@@ -42,7 +60,7 @@
   --color-sage: var(--sage);
   --color-line: var(--line);
 
-  --font-display: var(--font-fraunces), Georgia, 'Times New Roman', serif;
+  --font-display: var(--display);
   --font-body: var(--font-public-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), ui-monospace, 'SFMono-Regular', monospace;
 }
@@ -56,14 +74,15 @@
     text-rendering: optimizeLegibility;
   }
 
-  /* A faint warm paper grain so backgrounds read as stock, not screen. */
+  /* A faint warm paper grain so backgrounds read as stock, not screen. Themes
+     control its strength via --grain (Climate Barometer sets it to 0). */
   body::before {
     content: '';
     position: fixed;
     inset: 0;
     z-index: -1;
     pointer-events: none;
-    opacity: 0.03;
+    opacity: var(--grain);
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
