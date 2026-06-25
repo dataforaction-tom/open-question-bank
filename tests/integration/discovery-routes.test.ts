@@ -69,7 +69,7 @@ describe('GET /api/questions (browse)', () => {
   it('200 with canonical/ranked questions only', async () => {
     await q('canon', 'canonical')
     await q('pending', 'submitted') // excluded
-    const res = await questionsGet()
+    const res = await questionsGet(new Request('http://localhost/api/questions'))
     expect(res.status).toBe(200)
     const { questions } = await res.json()
     expect(questions).toHaveLength(1)

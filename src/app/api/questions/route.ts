@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prepareSubmission, createQuestion, type SubmitInput } from '@/lib/submission'
 import { listPublicQuestions } from '@/lib/discovery'
+import { questionsByTheme } from '@/lib/browse'
 import { mapPublicError } from '@/lib/api-errors'
 import { IneligibleError, NotFoundError } from '@/lib/errors'
 
@@ -26,8 +27,12 @@ const bodySchema = z.object({
     .optional(),
 })
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const theme = new URL(request.url).searchParams.get('theme')
+    if (theme) {
+      return NextResponse.json({ questions: await questionsByTheme(theme) })
+    }
     return NextResponse.json({ questions: await listPublicQuestions() })
   } catch (err) {
     return mapPublicError(err, '[GET /api/questions]')
