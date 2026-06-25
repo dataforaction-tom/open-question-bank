@@ -31,7 +31,8 @@ interface Agenda {
 interface Evidence {
   opponentText: string
   outcome: 'won' | 'lost' | 'drew'
-  servedReason: string | null
+  // Note: the API also returns `servedReason` (the internal pairing reason); it is intentionally
+  // not surfaced in the public plain-language view, so it is omitted here.
   timestamp: string
 }
 interface PublicSynthesis {
@@ -127,7 +128,7 @@ export default function AgendaPage({ params }: { params: Promise<{ id: string }>
           const pct = strengthPercent(item.mu, maxMu)
           const label = standingLabel(item.rank, ratio)
           const meter = confidenceMeter(confidenceLevel(item.sigma))
-          const items = evidence[item.questionId]
+          const evidenceRows = evidence[item.questionId]
           return (
             <li key={item.questionId}>
               <Card className="space-y-3">
@@ -157,8 +158,8 @@ export default function AgendaPage({ params }: { params: Promise<{ id: string }>
                 </Button>
 
                 {openId === item.questionId &&
-                  (items ? (
-                    items.length === 0 ? (
+                  (evidenceRows ? (
+                    evidenceRows.length === 0 ? (
                       <p className="text-sm text-muted">No comparisons recorded.</p>
                     ) : (
                       <div className="space-y-1">
@@ -166,7 +167,7 @@ export default function AgendaPage({ params }: { params: Promise<{ id: string }>
                           Compared head-to-head {item.nComparisons} {item.nComparisons === 1 ? 'time' : 'times'}.
                         </p>
                         <ul className="space-y-1 list-none p-0">
-                          {items.map((e, i) => (
+                          {evidenceRows.map((e, i) => (
                             <li key={i} className="text-sm text-ink">
                               <span className="font-medium">{outcomePhrase(e.outcome)}:</span> &quot;{e.opponentText}&quot;
                             </li>

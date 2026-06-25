@@ -11,7 +11,10 @@ const BAR_FLOOR = 8
 /** Relative bar length: a question's score as a % of the top score (mu max), with a visible
  *  floor so the lowest item still shows. Integer 0–100. Relative, never an absolute value. */
 export function strengthPercent(mu: number, max: number): number {
-  if (max <= 0) return 100 // all-equal / zero — treat as full rather than divide by zero
+  // When the leader's score is non-positive (a whole campaign with negative TrueSkill means, or
+  // an all-zero/empty set) there is no meaningful positive reference, so every bar renders full
+  // rather than dividing by zero. Edge case only; see the design's deferred follow-ups.
+  if (max <= 0) return 100
   const pct = Math.round((mu / max) * 100)
   return Math.min(100, Math.max(BAR_FLOOR, pct))
 }

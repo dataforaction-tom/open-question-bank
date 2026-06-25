@@ -92,12 +92,13 @@ describe('approveQuestion', () => {
 
   it('still approves when classification fails (advisory)', async () => {
     const id = await insertSubmitted('A neutral question with no theme keyword', [0, 1, 0])
-    const failing = {
-      ...new MockProvider(),
+    // Object.assign keeps the prototype methods (a spread would drop them), so this stays a
+    // full ReasoningProvider with only classify overridden to throw.
+    const failing = Object.assign(new MockProvider(), {
       classify: async () => {
         throw new Error('provider down')
       },
-    }
+    })
     await approveQuestion(id, 'admin', failing)
     const [row] = await db.select().from(question).where(eq(question.id, id)).limit(1)
     expect(row.state).toBe('clustered')
