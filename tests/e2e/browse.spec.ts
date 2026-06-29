@@ -24,10 +24,14 @@ test('browse shows rails, search, and theme drill-in', async ({ page, browser })
   const anon = await browser.newContext()
   const vp = await anon.newPage()
 
-  // Rails by default.
+  // Rails by default. Scope to the "Most recent" rail: with little data the same
+  // question can legitimately appear in more than one rail, so an unscoped getByText
+  // would trip strict mode.
   await vp.goto('/browse')
-  await expect(vp.getByRole('heading', { name: 'Most recent' })).toBeVisible()
-  await expect(vp.getByText(text)).toBeVisible()
+  const recentRail = vp.locator('section').filter({
+    has: vp.getByRole('heading', { name: 'Most recent' }),
+  })
+  await expect(recentRail.getByText(text)).toBeVisible()
 
   // Search swaps rails -> results, then back.
   await vp.getByLabel('Search').fill('cycle lanes')

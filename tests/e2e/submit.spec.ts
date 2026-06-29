@@ -1,10 +1,9 @@
 import { test, expect } from '@playwright/test'
 
-// Requires: docker compose up, model pulled, and `npm run db:seed` run once (Task 11).
-// NOTE: this submits against whatever DB the dev server points to (the DEV db, not qb_test),
-// because `reuseExistingServer` may reuse a manually-started server. The unique phrase avoids
-// dedup collisions across runs; if this ever returns "candidates" unexpectedly, the dev
-// `question` table has accumulated a near match — truncate it.
+// Requires: docker compose up and the embedding model pulled. The e2e dev server runs
+// against the TEST database (see playwright.config.ts + global-setup.ts), never the dev
+// `qb` DB, so this submission can't pollute your dev data. The unique phrase still avoids
+// dedup collisions across runs within the test DB.
 test('a new question can be submitted', async ({ page }) => {
   const unique = `e2e probe ${Date.now()} — what should councils prioritise for flood defence?`
 
