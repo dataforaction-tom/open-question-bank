@@ -1,11 +1,12 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
-import { sql } from 'drizzle-orm'
+import { sql, eq } from 'drizzle-orm'
 import { db, pool } from '@/db/client'
 import {
   campaign, campaignQuestion, cluster, comparison, datasetVersion, question, score, synthesis,
 } from '@/db/schema'
 import {
   recentQuestions, topOfRecentCampaigns, mostAskedQuestions, themeCounts, questionsByTheme,
+  questionGraph,
 } from '@/lib/browse'
 import { THEMES } from '@/lib/themes'
 
@@ -169,5 +170,66 @@ describe('questionsByTheme', () => {
     await insertQ({ text: 'transport q', state: 'ranked', theme: 'Transport & Streets' })
     expect((await questionsByTheme('Housing')).map((r) => r.canonicalText)).toEqual(['housing q'])
     expect(await questionsByTheme('Not A Theme')).toEqual([])
+  })
+})
+
+describe('questionGraph', () => {
+  it('returns empty graph when no published questions exist', async () => {
+    const graph = await questionGraph(200)
+    expect(graph.nodes).toEqual([])
+    expect(graph.edges).toEqual([])
+  })
+
+  it('returns nodes for published questions with theme and variantCount, edges for shared clusters', async () => {
+    // Create a cluster with 3 canonical questions + 1 without a cluster.
+    // Questions must exist before the cluster (FK: representative_question_id → question.id).
+    const a = await insertQ({ text: 'Question A', state: 'canonical', theme: 'Housing' })
+    const [cl] = await db
+      .insert(cluster)
+      .values({ datasetVersionId: versionId, representativeQuestionId: a, thresholdUsed: 0.3 })
+      .returning()
+
+    await db.update(question).set({ clusterId: cl.id }).where(eq(question.id, a))
+    const b = await insertQ({ text: 'Question B', state: 'canonical', theme: 'Housing', clusterId: cl.id })
+    const c = await insertQ({ text: 'Question C', state: 'ranked', theme: 'Climate & Environment', clusterId: cl.id })
+    const d = await insertQ({ text: 'Question D', state: 'canonical', theme: 'Transport & Streets' })
+
+    // Merge 2 variants into A.
+    await db.insert(question).values([
+      {
+        rawText: 'va1', canonicalText: 'va1', embedding: pad([1, 0, 0]),
+        embeddingModelVersion: 'test@sha256:test', datasetVersionId: versionId,
+        visibility: 'public', state: 'merged_as_variant', canonicalOf: a,
+      },
+      {
+        rawText: 'va2', canonicalText: 'va2', embedding: pad([1, 0, 0]),
+        embeddingModelVersion: 'test@sha256:test', datasetVersionId: versionId,
+        visibility: 'public', state: 'merged_as_variant', canonicalOf: a,
+      },
+    ])
+
+    const graph = await questionGraph(200)
+    expect(graph.nodes).toHaveLength(4)
+
+    const nodeA = graph.nodes.find((n) => n.id === a)!
+    expect(nodeA.theme).toBe('Housing')
+    expect(nodeA.clusterId).toBe(cl.id)
+    expect(nodeA.variantCount).toBe(2)
+
+    const nodeD = graph.nodes.find((n) => n.id === d)!
+    expect(nodeD.clusterId).toBeNull()
+    expect(nodeD.variantCount).toBe(0)
+
+    // 3 questions in the same cluster → 3 edges (a-b, a-c, b-c).
+    expect(graph.edges).toHaveLength(3)
+    expect(graph.edges.every((e) => e.clusterId === cl.id)).toBe(true)
+  })
+
+  it('respects the maxNodes cap', async () => {
+    for (let i = 0; i < 5; i++) {
+      await insertQ({ text: `Q${i}`, state: 'canonical', theme: 'Housing' })
+    }
+    const graph = await questionGraph(3)
+    expect(graph.nodes).toHaveLength(3)
   })
 })

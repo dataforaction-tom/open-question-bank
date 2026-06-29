@@ -1,6 +1,7 @@
 import { AdminShell } from '@/components/ui/AdminShell'
 import { Card } from '@/components/ui/Card'
 import { ChartCard } from '@/components/charts/ChartCard'
+import { QuestionGraph } from '@/components/charts/QuestionGraph'
 import {
   clusterSizes,
   comparisonsByDay,
@@ -10,6 +11,7 @@ import {
   refinementsByDay,
   submissionsByDay,
 } from '@/lib/analytics'
+import { questionGraph } from '@/lib/browse'
 
 // Reads live data on each request; never statically generated (no DB at build).
 export const dynamic = 'force-dynamic'
@@ -25,7 +27,7 @@ function Stat({ label, value }: { label: string; value: number }) {
 
 export default async function AdminDashboardPage() {
   // Workspace-scoped (active workspace). Fetched in parallel.
-  const [totals, submissions, states, comparisons, refinements, bands, clusters] = await Promise.all([
+  const [totals, submissions, states, comparisons, refinements, bands, clusters, graph] = await Promise.all([
     pipelineTotals(),
     submissionsByDay(30),
     questionStateCounts(),
@@ -33,6 +35,7 @@ export default async function AdminDashboardPage() {
     refinementsByDay(30),
     definednessBands(),
     clusterSizes(10),
+    questionGraph(200),
   ])
 
   return (
@@ -59,6 +62,8 @@ export default async function AdminDashboardPage() {
         <ChartCard title="Definedness bands" data={bands} kind="bar" color="var(--sage)" valueLabel="Questions" empty="No scored questions yet." />
         <ChartCard title="Largest clusters" data={clusters} kind="bar" color="var(--sage)" valueLabel="Questions" empty="No clusters yet." />
       </div>
+
+      <QuestionGraph nodes={graph.nodes} edges={graph.edges} />
     </AdminShell>
   )
 }

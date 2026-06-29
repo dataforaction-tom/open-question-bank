@@ -10,6 +10,7 @@ import { Notice } from '@/components/ui/Notice'
 import { Stamp } from '@/components/ui/Stamp'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Input, Label } from '@/components/ui/Field'
+import { QuestionGraph } from '@/components/charts/QuestionGraph'
 
 interface Result { id: string; canonicalText: string; state: 'canonical' | 'ranked'; rank?: number }
 interface Similar { id: string; canonicalText: string; state: 'canonical' | 'ranked'; distance: number }
@@ -18,6 +19,9 @@ interface TopCampaign extends Result { campaignId: string; campaignPrompt: strin
 interface MostAsked extends Result { clusterSize: number }
 interface ThemeCount { theme: string; count: number }
 interface Rails { recent: Result[]; topOfCampaigns: TopCampaign[]; mostAsked: MostAsked[]; themes: ThemeCount[] }
+interface GraphNode { id: string; canonicalText: string; state: string; theme: string | null; clusterId: string | null; variantCount: number }
+interface GraphEdge { source: string; target: string; clusterId: string }
+interface GraphData { nodes: GraphNode[]; edges: GraphEdge[] }
 
 const BANDS = [
   { value: '', label: 'Any definedness' },
@@ -97,12 +101,17 @@ export default function BrowsePage() {
   const [message, setMessage] = useState('')
   const [resultsTitle, setResultsTitle] = useState('')
   const [similar, setSimilar] = useState<Record<string, SimilarState>>({})
+  const [graph, setGraph] = useState<GraphData | null>(null)
 
   const loadRails = useCallback(async () => {
     try {
-      const res = await fetch('/api/browse')
-      if (res.ok) setRails(await res.json())
+      const [railsRes, graphRes] = await Promise.all([
+        fetch('/api/browse'),
+        fetch('/api/browse/graph'),
+      ])
+      if (railsRes.ok) setRails(await railsRes.json())
       else setRailsError('Could not load the question bank.')
+      if (graphRes.ok) setGraph(await graphRes.json())
     } catch {
       setRailsError('Network error — please try again.')
     }
@@ -301,6 +310,12 @@ export default function BrowsePage() {
               </ul>
             )}
           </Rail>
+
+          {graph && graph.nodes.length > 0 && (
+            <Rail title="Question map">
+              <QuestionGraph nodes={graph.nodes} edges={graph.edges} />
+            </Rail>
+          )}
         </div>
       )}
     </PageShell>
