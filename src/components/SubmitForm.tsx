@@ -24,16 +24,27 @@ export function SubmitForm({ campaignId }: { campaignId?: string }) {
   const [visibility, setVisibility] = useState<'anonymous' | 'public'>('public')
   const [phase, setPhase] = useState<Phase>('editing')
   const [candidates, setCandidates] = useState<Candidate[]>([])
+  const [precomputed, setPrecomputed] = useState<{
+    embedding: number[]
+    embeddingModelVersion: string
+    workspaceId: string
+    datasetVersionId: number
+  } | null>(null)
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
 
   async function post(body: Record<string, unknown>) {
     setBusy(true)
     try {
+      const payload = campaignId ? { ...body, campaignId } : body
+      // Pass back the embedding from the dedup call so the decision call doesn't re-embed.
+      if (precomputed && (body.decision || body.rawText)) {
+        Object.assign(payload, { precomputed })
+      }
       const res = await fetch('/api/questions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(campaignId ? { ...body, campaignId } : body),
+        body: JSON.stringify(payload),
       })
       return await res.json()
     } catch {
@@ -48,6 +59,12 @@ export function SubmitForm({ campaignId }: { campaignId?: string }) {
     const result = await post({ rawText: text, visibility })
     if (result.status === 'candidates') {
       setCandidates(result.candidates)
+      setPrecomputed({
+        embedding: result.embedding,
+        embeddingModelVersion: result.embeddingModelVersion,
+        workspaceId: result.workspaceId,
+        datasetVersionId: result.datasetVersionId,
+      })
       setPhase('choosing')
     } else if (result.status === 'created') {
       setMessage('Thanks — your question was added.')

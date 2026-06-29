@@ -2,8 +2,9 @@ import { and, asc, desc, eq, inArray } from 'drizzle-orm'
 import { db } from '@/db/client'
 import { campaign, campaignQuestion, question, score, type Campaign } from '@/db/schema'
 import { IneligibleError, NotFoundError } from '@/lib/errors'
-import { initialRating } from '@/lib/trueskill'
+import { initialRating, initialRatingWithDemand } from '@/lib/trueskill'
 import { getActiveWorkspaceId } from '@/lib/workspace'
+import { getVariantCounts } from '@/lib/submission'
 
 // The transaction handle Drizzle hands to db.transaction() callbacks — lets
 // helpers run inside a transaction without casting away the db type.
@@ -178,10 +179,20 @@ export async function openComparison(campaignId: string): Promise<Campaign> {
         throw new IneligibleError(`Question ${m.id} is not available (state=${m.state})`)
       }
     }
+    // Community demand prior: questions that received more merged submissions
+    // start with a higher initial mu (logarithmic boost, sigma unchanged).
+    // Pairwise comparisons can still override this — it's a head start, not a floor.
+    const variantCounts = await getVariantCounts(members.map((m) => m.id), tx)
     const init = initialRating()
     await tx
       .insert(score)
-      .values(members.map((m) => ({ campaignId, questionId: m.id, mu: init.mu, sigma: init.sigma })))
+      .values(
+        members.map((m) => {
+          const vc = variantCounts.get(m.id) ?? 0
+          const rating = vc > 0 ? initialRatingWithDemand(vc) : init
+          return { campaignId, questionId: m.id, mu: rating.mu, sigma: rating.sigma }
+        }),
+      )
       .onConflictDoNothing()
     await tx
       .update(question)

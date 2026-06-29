@@ -122,6 +122,41 @@ describe('openComparison', () => {
     expect(qa.state).toBe('under_comparison')
   })
 
+  it('seeds a higher initial mu for questions with merged variants (community demand prior)', async () => {
+    const a = await q('a', 'canonical')
+    const b = await q('b', 'canonical')
+    // Merge 3 variants into a
+    await db.insert(question).values([
+      {
+        rawText: 'va1', canonicalText: 'va1', embedding: pad([1, 0, 0]),
+        embeddingModelVersion: 'test@sha256:test', datasetVersionId: versionId,
+        visibility: 'public', state: 'merged_as_variant', canonicalOf: a,
+      },
+      {
+        rawText: 'va2', canonicalText: 'va2', embedding: pad([1, 0, 0]),
+        embeddingModelVersion: 'test@sha256:test', datasetVersionId: versionId,
+        visibility: 'public', state: 'merged_as_variant', canonicalOf: a,
+      },
+      {
+        rawText: 'va3', canonicalText: 'va3', embedding: pad([1, 0, 0]),
+        embeddingModelVersion: 'test@sha256:test', datasetVersionId: versionId,
+        visibility: 'public', state: 'merged_as_variant', canonicalOf: a,
+      },
+    ])
+    const c = await createCampaign({ prompt: 'p', comparisonAxis: 'importance' })
+    await addQuestions(c.id, [a, b])
+    await openComparison(c.id)
+
+    const scores = await db.select().from(score).where(eq(score.campaignId, c.id))
+    const scoreA = scores.find((s) => s.questionId === a)!
+    const scoreB = scores.find((s) => s.questionId === b)!
+    // a has 3 variants → higher initial mu; b has none → default mu.
+    expect(scoreA.mu).toBeGreaterThan(25)
+    expect(scoreB.mu).toBe(25)
+    // Sigma unchanged for both.
+    expect(scoreA.sigma).toBeCloseTo(scoreB.sigma, 5)
+  })
+
   it('needs at least two members', async () => {
     const c = await createCampaign({ prompt: 'p', comparisonAxis: 'importance' })
     await addQuestions(c.id, [await q('a', 'canonical')])

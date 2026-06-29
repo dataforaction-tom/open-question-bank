@@ -93,6 +93,22 @@ describe('getPublicQuestion', () => {
       actorRef: 'admin-secret',
     })
 
+    // Two variants merged into the target — the community demand signal.
+    await db.insert(question).values([
+      {
+        rawText: 'variant 1', canonicalText: 'variant 1', embedding: pad([1, 0, 0]),
+        embeddingModelVersion: 'test@sha256:test', workspaceId: DEFAULT_WORKSPACE_ID,
+        datasetVersionId: versionId, visibility: 'public', state: 'merged_as_variant',
+        canonicalOf: target,
+      },
+      {
+        rawText: 'variant 2', canonicalText: 'variant 2', embedding: pad([1, 0, 0]),
+        embeddingModelVersion: 'test@sha256:test', workspaceId: DEFAULT_WORKSPACE_ID,
+        datasetVersionId: versionId, visibility: 'public', state: 'merged_as_variant',
+        canonicalOf: target,
+      },
+    ])
+
     const detail = await getPublicQuestion(target)
     expect(detail.id).toBe(target)
     expect(detail.state).toBe('ranked')
@@ -102,6 +118,7 @@ describe('getPublicQuestion', () => {
     expect(detail.campaigns).toEqual([{ id: c.id, prompt: 'closed campaign', state: 'closed' }])
     expect(detail.refinement.count).toBe(1)
     expect(detail.refinement.criteria.sort()).toEqual(['scoped', 'specific'])
+    expect(detail.variantCount).toBe(2)
     // Anonymity: nothing in the payload exposes actor or submitter identity.
     expect(JSON.stringify(detail)).not.toContain('admin-secret')
     expect(JSON.stringify(detail)).not.toContain('secret-token')
@@ -118,5 +135,6 @@ describe('getPublicQuestion', () => {
     expect(detail.cluster).toBeNull()
     expect(detail.campaigns).toEqual([])
     expect(detail.refinement).toEqual({ count: 0, criteria: [] })
+    expect(detail.variantCount).toBe(0)
   })
 })

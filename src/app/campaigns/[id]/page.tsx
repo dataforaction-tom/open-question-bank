@@ -23,6 +23,7 @@ interface Item {
   mu: number
   sigma: number
   nComparisons: number
+  variantCount: number
 }
 interface Agenda {
   campaign: { prompt: string; comparisonAxis: string; closesAt: string | null }
@@ -134,7 +135,14 @@ export default function AgendaPage({ params }: { params: Promise<{ id: string }>
               <Card className="space-y-3">
                 <div className="flex gap-3">
                   <span className="font-display text-xl text-moss shrink-0">#{item.rank}</span>
-                  <div className="min-w-0 break-words text-ink">{item.canonicalText}</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="break-words text-ink">{item.canonicalText}</div>
+                    {item.variantCount > 0 && (
+                      <p className="mt-0.5 text-sm text-muted">
+                        {item.variantCount} submission{item.variantCount === 1 ? '' : 's'} merged here
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Relative strength bar (decorative — the label carries the meaning). */}
@@ -200,6 +208,7 @@ export default function AgendaPage({ params }: { params: Promise<{ id: string }>
               mu: it.mu,
               sigma: it.sigma,
               nComparisons: it.nComparisons,
+              variantCount: it.variantCount,
             }))}
           />
         </div>

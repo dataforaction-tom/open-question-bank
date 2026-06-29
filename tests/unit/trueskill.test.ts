@@ -1,10 +1,46 @@
 import { describe, expect, it } from 'vitest'
-import { initialRating, update } from '@/lib/trueskill'
+import { initialRating, initialRatingWithDemand, demandPrior, MU0, update } from '@/lib/trueskill'
 
 describe('initialRating', () => {
   it('is the TrueSkill default (25, 25/3)', () => {
     const r = initialRating()
     expect(r.mu).toBeCloseTo(25, 6)
+    expect(r.sigma).toBeCloseTo(25 / 3, 6)
+  })
+})
+
+describe('demandPrior', () => {
+  it('returns 0 for zero or negative variant counts', () => {
+    expect(demandPrior(0)).toBe(0)
+    expect(demandPrior(-1)).toBe(0)
+  })
+
+  it('returns a positive boost for any non-zero count', () => {
+    expect(demandPrior(1)).toBeGreaterThan(0)
+    expect(demandPrior(10)).toBeGreaterThan(0)
+  })
+
+  it('has diminishing returns (logarithmic)', () => {
+    // Equal steps: each +5 should add less than the previous +5.
+    const b5 = demandPrior(5)
+    const b10 = demandPrior(10)
+    const b15 = demandPrior(15)
+    const b20 = demandPrior(20)
+    expect(b10 - b5).toBeGreaterThan(b15 - b10)
+    expect(b15 - b10).toBeGreaterThan(b20 - b15)
+  })
+})
+
+describe('initialRatingWithDemand', () => {
+  it('returns the default rating when variantCount is 0', () => {
+    const r = initialRatingWithDemand(0)
+    expect(r.mu).toBeCloseTo(MU0, 6)
+    expect(r.sigma).toBeCloseTo(25 / 3, 6)
+  })
+
+  it('shifts mu upward but keeps sigma unchanged', () => {
+    const r = initialRatingWithDemand(5)
+    expect(r.mu).toBeGreaterThan(MU0)
     expect(r.sigma).toBeCloseTo(25 / 3, 6)
   })
 })

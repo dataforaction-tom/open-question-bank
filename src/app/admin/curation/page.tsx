@@ -12,6 +12,7 @@ interface Clustered {
   id: string
   canonicalText: string
   createdAt: string
+  variantCount?: number
 }
 
 interface ScoreRow {
@@ -178,7 +179,14 @@ export default function CurationPage() {
           {questions.map((q) => (
             <li key={q.id}>
               <Card className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0 break-words text-ink">{q.canonicalText}</div>
+                <div className="min-w-0 space-y-1">
+                  <div className="break-words text-ink">{q.canonicalText}</div>
+                  {q.variantCount && q.variantCount > 0 && (
+                    <p className="text-sm text-muted">
+                      {q.variantCount} submission{q.variantCount === 1 ? '' : 's'} merged here
+                    </p>
+                  )}
+                </div>
                 <Button
                   type="button"
                   className="shrink-0 self-start sm:self-auto"
