@@ -3,6 +3,7 @@ import { db } from '@/db/client'
 import { question } from '@/db/schema'
 import { getActiveWorkspaceId } from '@/lib/workspace'
 import { listPublicQuestions } from '@/lib/discovery'
+import { getVariantCounts } from '@/lib/submission'
 import { THEMES, UNSORTED, isTheme } from '@/lib/themes'
 
 export type RailQuestion = { id: string; canonicalText: string; state: 'canonical' | 'ranked' }
@@ -134,4 +135,93 @@ export async function questionsByTheme(
     .orderBy(desc(question.createdAt))
     .limit(limit)
   return rows.map((r) => ({ id: r.id, canonicalText: r.canonicalText, state: r.state as 'canonical' | 'ranked' }))
+}
+
+// ---- Graph data ----
+
+export interface GraphNode {
+  id: string
+  canonicalText: string
+  state: string
+  theme: string | null
+  clusterId: string | null
+  variantCount: number
+}
+
+export interface GraphEdge {
+  /** Question IDs that share a cluster. */
+  source: string
+  target: string
+  /** Shared cluster ID (for tooltip/debug). */
+  clusterId: string
+}
+
+export interface QuestionGraph {
+  nodes: GraphNode[]
+  edges: GraphEdge[]
+}
+
+/**
+ * The question relationship graph: nodes are published questions (canonical/ranked),
+ * edges connect questions that share a cluster (embedding-similarity grouping).
+ * Nodes carry theme (for colour) and variantCount (for size — community demand).
+ * Anonymised: no submitter refs, no embeddings. Edges are derived from cluster
+ * membership only — no raw cosine distances are exposed.
+ *
+ * `maxNodes` caps the total to keep the SVG render manageable (default 200).
+ */
+export async function questionGraph(
+  maxNodes = 200,
+  workspaceId?: string,
+): Promise<QuestionGraph> {
+  const ws = workspaceId ?? (await getActiveWorkspaceId())
+
+  // Fetch published questions with their theme and cluster.
+  const rows = await db
+    .select({
+      id: question.id,
+      canonicalText: question.canonicalText,
+      state: question.state,
+      theme: question.theme,
+      clusterId: question.clusterId,
+    })
+    .from(question)
+    .where(and(eq(question.workspaceId, ws), inArray(question.state, [...PUBLIC_STATES])))
+    .orderBy(desc(question.createdAt))
+    .limit(maxNodes)
+
+  if (rows.length === 0) return { nodes: [], edges: [] }
+
+  // Variant counts (community demand → node size).
+  const variantCounts = await getVariantCounts(rows.map((r) => r.id))
+
+  const nodes: GraphNode[] = rows.map((r) => ({
+    id: r.id,
+    canonicalText: r.canonicalText,
+    state: r.state,
+    theme: r.theme,
+    clusterId: r.clusterId,
+    variantCount: variantCounts.get(r.id) ?? 0,
+  }))
+
+  // Edges: connect questions that share a cluster. O(n²) but only within
+  // cluster groups, and the total is capped by maxNodes.
+  const byCluster = new Map<string, GraphNode[]>()
+  for (const node of nodes) {
+    if (!node.clusterId) continue
+    const group = byCluster.get(node.clusterId)
+    if (group) group.push(node)
+    else byCluster.set(node.clusterId, [node])
+  }
+
+  const edges: GraphEdge[] = []
+  for (const [clusterId, group] of byCluster) {
+    for (let i = 0; i < group.length; i++) {
+      for (let j = i + 1; j < group.length; j++) {
+        edges.push({ source: group[i].id, target: group[j].id, clusterId })
+      }
+    }
+  }
+
+  return { nodes, edges }
 }
