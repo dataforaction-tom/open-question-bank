@@ -76,4 +76,21 @@ describe('findNearest', () => {
     const candidates = await findNearest(pad([1, 0, 0]), versionId, 0.15, 5)
     expect(candidates).toEqual([])
   })
+
+  it('excludes rejected, merged_as_variant, and flagged questions', async () => {
+    // Insert one eligible question and three ineligible ones with identical embeddings.
+    const base = {
+      rawText: 'shared', canonicalText: 'shared', embedding: pad([1, 0, 0]),
+      embeddingModelVersion: 'nomic-embed-text@sha256:test', datasetVersionId: versionId, visibility: 'public' as const,
+    }
+    await db.insert(question).values([
+      { ...base, rawText: 'eligible', canonicalText: 'eligible', state: 'canonical' },
+      { ...base, rawText: 'rejected', canonicalText: 'rejected', state: 'rejected' },
+      { ...base, rawText: 'merged', canonicalText: 'merged', state: 'merged_as_variant' },
+      { ...base, rawText: 'flagged', canonicalText: 'flagged', state: 'flagged' },
+    ])
+    const candidates = await findNearest(pad([1, 0, 0]), versionId, 0.15, 5)
+    expect(candidates).toHaveLength(1)
+    expect(candidates[0].canonicalText).toBe('eligible')
+  })
 })

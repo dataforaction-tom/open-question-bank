@@ -17,6 +17,7 @@ interface QuestionDetail {
   cluster: { id: string; representativeText: string | null; size: number } | null
   campaigns: { id: string; prompt: string; state: 'comparing' | 'closed' }[]
   refinement: { count: number; criteria: string[] }
+  variantCount: number
 }
 interface Similar {
   id: string
@@ -78,7 +79,12 @@ export default function QuestionDetailPage() {
         <>
           <div className="space-y-2">
             <h1 className="text-2xl break-words">{detail.canonicalText}</h1>
-            <Stamp>{detail.state}</Stamp>
+            <div className="flex items-center gap-2">
+              <Stamp>{detail.state}</Stamp>
+              {detail.variantCount > 0 && (
+                <Stamp>{detail.variantCount} submission{detail.variantCount === 1 ? '' : 's'} merged here</Stamp>
+              )}
+            </div>
           </div>
 
           {detail.cluster && (

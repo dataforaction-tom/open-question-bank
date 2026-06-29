@@ -14,11 +14,21 @@ const uuid = z.string().regex(UUID_RE, 'must be a UUID')
 //  - { type: 'new' } → force-create a fresh question
 //  - { type: 'merge', canonicalId } → store as a variant of the chosen question
 // `campaignId` (optional) is the campaign the question is submitted INTO — a curation signal.
+// `precomputed` (optional) carries the embedding + provenance from a prior dedup call, so the
+// decision call can skip re-embedding (avoids a double Ollama call).
+const precomputedSchema = z.object({
+  embedding: z.array(z.number()),
+  embeddingModelVersion: z.string(),
+  workspaceId: z.string(),
+  datasetVersionId: z.number(),
+})
+
 const bodySchema = z.object({
   rawText: z.string().trim().min(1).max(2000),
   visibility: z.enum(['anonymous', 'public']),
   submitterRef: z.string().nullish(),
   campaignId: uuid.optional(),
+  precomputed: precomputedSchema.optional(),
   decision: z
     .union([
       z.object({ type: z.literal('new') }),
@@ -64,16 +74,22 @@ export async function POST(request: Request) {
     originatingCampaignId: body.campaignId ?? null,
   }
 
+  // If the client passed back the embedding from the dedup call, reuse it.
+  const precomputed = body.precomputed
+
   try {
     if (body.decision?.type === 'new') {
-      const created = await createQuestion(input)
+      const created = await createQuestion(input, { precomputed })
       return NextResponse.json(
         { status: 'created', question: { id: created.id, canonicalText: created.canonicalText } },
         { status: 201 },
       )
     }
     if (body.decision?.type === 'merge') {
-      const variant = await createQuestion(input, { mergeInto: body.decision.canonicalId })
+      const variant = await createQuestion(input, {
+        mergeInto: body.decision.canonicalId,
+        precomputed,
+      })
       return NextResponse.json(
         { status: 'merged', question: { id: variant.id, canonicalText: variant.canonicalText } },
         { status: 201 },

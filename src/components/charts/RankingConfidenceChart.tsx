@@ -18,6 +18,7 @@ export interface RankingPoint {
   mu: number
   sigma: number
   nComparisons: number
+  variantCount?: number
 }
 
 const AXIS = 'var(--muted)'
@@ -89,6 +90,7 @@ export function RankingConfidenceChart({ items }: { items: RankingPoint[] }) {
               <th scope="col" className="pr-3 font-medium text-muted">μ</th>
               <th scope="col" className="pr-3 font-medium text-muted">σ</th>
               <th scope="col" className="pr-3 font-medium text-muted">Comparisons</th>
+              <th scope="col" className="pr-3 font-medium text-muted">Demand</th>
               <th scope="col" className="font-medium text-muted">Question</th>
             </tr>
           </thead>
@@ -99,6 +101,7 @@ export function RankingConfidenceChart({ items }: { items: RankingPoint[] }) {
                 <td className="pr-3 text-ink tabular-nums">{it.mu.toFixed(1)}</td>
                 <td className="pr-3 text-ink tabular-nums">{it.sigma.toFixed(1)}</td>
                 <td className="pr-3 text-ink tabular-nums">{it.nComparisons}</td>
+                <td className="pr-3 text-ink tabular-nums">{it.variantCount ?? 0}</td>
                 <td className="text-muted break-words">{it.canonicalText}</td>
               </tr>
             ))}

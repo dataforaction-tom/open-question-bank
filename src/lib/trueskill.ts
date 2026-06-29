@@ -19,6 +19,28 @@ export function initialRating(): Rating {
   return { mu: MU0, sigma: SIGMA0 }
 }
 
+/**
+ * Community demand prior: adjust the initial mu upward based on how many
+ * submissions merged into this question. The boost is logarithmic (diminishing
+ * returns) so a question with 10 variants gets a meaningful but not dominant
+ * head start. Sigma is unchanged — the demand signal reduces neither the
+ * uncertainty nor the amount of comparison evidence needed.
+ *
+ * With the default MU0=25, BETA≈4.17: 1 variant ≈ +2.4, 5 ≈ +4.4, 10 ≈ +5.6.
+ * These are small relative to the BETA spread, so pairwise comparisons can
+ * easily override the prior.
+ */
+const DEMAND_PRIOR_SCALE = BETA / 2 // ≈ 2.08
+
+export function demandPrior(variantCount: number): number {
+  if (variantCount <= 0) return 0
+  return DEMAND_PRIOR_SCALE * Math.log2(1 + variantCount)
+}
+
+export function initialRatingWithDemand(variantCount: number): Rating {
+  return { mu: MU0 + demandPrior(variantCount), sigma: SIGMA0 }
+}
+
 // Draw margin for a 1v1 (one player per side): ppf((p+1)/2) * sqrt(2) * beta.
 function drawMarginRaw(): number {
   return N.ppf((DRAW_PROBABILITY + 1) / 2) * Math.sqrt(2) * BETA

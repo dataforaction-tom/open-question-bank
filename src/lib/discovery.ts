@@ -4,6 +4,7 @@ import { db } from '@/db/client'
 import { campaign, campaignQuestion, cluster, question, refinement } from '@/db/schema'
 import { NotFoundError } from '@/lib/errors'
 import { getActiveWorkspaceId } from '@/lib/workspace'
+import { getVariantCount } from '@/lib/submission'
 
 export interface PublicCampaign {
   id: string
@@ -126,6 +127,8 @@ export interface PublicQuestionDetail {
   campaigns: { id: string; prompt: string; state: 'comparing' | 'closed' }[]
   /** Anonymised lineage summary — counts and criteria only, never actor identity. */
   refinement: { count: number; criteria: string[] }
+  /** How many submissions were merged into this question — the community demand signal. */
+  variantCount: number
 }
 
 /**
@@ -202,6 +205,8 @@ export async function getPublicQuestion(
     .where(eq(refinement.questionId, id))
   const criteria = [...new Set(refs.flatMap((r) => r.criteriaApplied ?? []))]
 
+  const variantCount = await getVariantCount(id)
+
   return {
     id: q.id,
     canonicalText: q.canonicalText,
@@ -213,5 +218,6 @@ export async function getPublicQuestion(
       state: cmp.state as 'comparing' | 'closed',
     })),
     refinement: { count: refs.length, criteria },
+    variantCount,
   }
 }

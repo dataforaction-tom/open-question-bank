@@ -84,6 +84,47 @@ describe('getAgenda', () => {
     expect(agenda.items[0].mu).toBeGreaterThan(agenda.items[1].mu)
     expect(typeof agenda.items[0].sigma).toBe('number')
     expect(agenda.items[0].nComparisons).toBe(1)
+    // variantCount is present (0 when no merges)
+    expect(agenda.items[0].variantCount).toBe(0)
+  })
+
+  it('includes variantCount as a community demand signal on agenda items', async () => {
+    const a = await q('Question A')
+    const b = await q('Question B')
+    // Merge 3 variants into A, 1 into B
+    await db.insert(question).values([
+      {
+        rawText: 'va1', canonicalText: 'va1', embedding: pad([1, 0, 0]),
+        embeddingModelVersion: 'test@sha256:test', datasetVersionId: versionId,
+        visibility: 'public', state: 'merged_as_variant', canonicalOf: a,
+      },
+      {
+        rawText: 'va2', canonicalText: 'va2', embedding: pad([1, 0, 0]),
+        embeddingModelVersion: 'test@sha256:test', datasetVersionId: versionId,
+        visibility: 'public', state: 'merged_as_variant', canonicalOf: a,
+      },
+      {
+        rawText: 'va3', canonicalText: 'va3', embedding: pad([1, 0, 0]),
+        embeddingModelVersion: 'test@sha256:test', datasetVersionId: versionId,
+        visibility: 'public', state: 'merged_as_variant', canonicalOf: a,
+      },
+      {
+        rawText: 'vb1', canonicalText: 'vb1', embedding: pad([0, 1, 0]),
+        embeddingModelVersion: 'test@sha256:test', datasetVersionId: versionId,
+        visibility: 'public', state: 'merged_as_variant', canonicalOf: b,
+      },
+    ])
+    const c = await createCampaign({ prompt: 'most important?', comparisonAxis: 'importance' })
+    await addQuestions(c.id, [a, b])
+    await openComparison(c.id)
+    await recordComparison({ campaignId: c.id, questionAId: a, questionBId: b, winnerQuestionId: a, judgeRef: 'j1' })
+    await closeCampaign(c.id)
+
+    const agenda = await getAgenda(c.id)
+    const itemA = agenda.items.find((it) => it.questionId === a)!
+    const itemB = agenda.items.find((it) => it.questionId === b)!
+    expect(itemA.variantCount).toBe(3)
+    expect(itemB.variantCount).toBe(1)
   })
 })
 

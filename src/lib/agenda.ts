@@ -2,6 +2,7 @@ import { and, asc, desc, eq, inArray, or } from 'drizzle-orm'
 import { db } from '@/db/client'
 import { campaign, campaignQuestion, comparison, question, score } from '@/db/schema'
 import { IneligibleError, NotFoundError } from '@/lib/errors'
+import { getVariantCounts } from '@/lib/submission'
 
 /** A comparison's result from one participant's point of view. Pure. */
 export function outcomeFor(
@@ -34,6 +35,9 @@ export async function getAgenda(campaignId: string) {
     .where(eq(score.campaignId, campaignId))
     .orderBy(desc(score.mu), asc(score.sigma), asc(score.questionId))
 
+  // Community demand: how many submissions merged into each agenda question.
+  const variantCounts = await getVariantCounts(rows.map((r) => r.questionId))
+
   return {
     campaign: { prompt: c.prompt, comparisonAxis: c.comparisonAxis, closesAt: c.closesAt },
     items: rows.map((r, i) => ({
@@ -43,6 +47,7 @@ export async function getAgenda(campaignId: string) {
       mu: r.mu,
       sigma: r.sigma,
       nComparisons: r.nComparisons,
+      variantCount: variantCounts.get(r.questionId) ?? 0,
     })),
   }
 }
