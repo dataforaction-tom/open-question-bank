@@ -36,6 +36,10 @@ test-results/
 playwright-report/
 .playwright/
 
+# mkdocs (docs site build tooling + output; published via `mkdocs gh-deploy`)
+.venv-docs/
+site/
+
 # OS
 .DS_Store
 Thumbs.db

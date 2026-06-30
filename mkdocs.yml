@@ -1,5 +1,9 @@
 site_name: "Question Bank Documentation"
 docs_dir: docs
+# Internal planning docs (docs/superpowers/) are gitignored/local-only — exclude them from the
+# build explicitly, since mkdocs scans the docs_dir on disk and ignores .gitignore.
+exclude_docs: |
+  superpowers/
 theme:
   name: material
   palette:
