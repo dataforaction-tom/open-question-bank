@@ -1,18 +1,20 @@
-import { asc, eq } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 import { db } from '@/db/client'
 import { question, refinement, type Refinement } from '@/db/schema'
 import { getProvider, type ReasoningProvider, type RefinementSuggestion } from '@/lib/llm'
 import { IneligibleError, NotFoundError } from '@/lib/errors'
+import { getActiveWorkspaceId } from '@/lib/workspace'
 
 // Re-exported so existing imports (routes, tests) keep working.
 export { IneligibleError, NotFoundError }
 
 /** Questions eligible for refinement: those that have been clustered (spec §5 ordering). */
-export async function listClustered(limit = 50) {
+export async function listClustered(limit = 50, workspaceId?: string) {
+  const ws = workspaceId ?? (await getActiveWorkspaceId())
   return db
     .select({ id: question.id, canonicalText: question.canonicalText, createdAt: question.createdAt })
     .from(question)
-    .where(eq(question.state, 'clustered'))
+    .where(and(eq(question.state, 'clustered'), eq(question.workspaceId, ws)))
     .orderBy(asc(question.createdAt))
     .limit(limit)
 }
@@ -21,8 +23,14 @@ export async function listClustered(limit = 50) {
 export async function suggestRefinement(
   questionId: string,
   provider: Pick<ReasoningProvider, 'refine'> = getProvider(),
+  workspaceId?: string,
 ): Promise<{ before: string; suggestion: RefinementSuggestion }> {
-  const [q] = await db.select().from(question).where(eq(question.id, questionId)).limit(1)
+  const ws = workspaceId ?? (await getActiveWorkspaceId())
+  const [q] = await db
+    .select()
+    .from(question)
+    .where(and(eq(question.id, questionId), eq(question.workspaceId, ws)))
+    .limit(1)
   if (!q) throw new NotFoundError(`Question not found: ${questionId}`)
   if (q.state !== 'clustered') throw new IneligibleError(`Question ${questionId} is not clustered (state=${q.state})`)
   const suggestion = await provider.refine(q.canonicalText)
@@ -41,6 +49,8 @@ export interface RecordRefinementInput {
   model: string | null
   modelVersion: string | null
   actorRef: string
+  /** Active workspace id. If omitted, resolves to the default workspace. */
+  workspaceId?: string
 }
 
 /**
@@ -48,8 +58,13 @@ export interface RecordRefinementInput {
  * Embeddings and state are NOT touched (pinned embedding, spec §8; curation→canonical is Slice 4).
  */
 export async function recordRefinement(input: RecordRefinementInput): Promise<Refinement> {
+  const ws = input.workspaceId ?? (await getActiveWorkspaceId())
   return db.transaction(async (tx) => {
-    const [q] = await tx.select().from(question).where(eq(question.id, input.questionId)).limit(1)
+    const [q] = await tx
+      .select()
+      .from(question)
+      .where(and(eq(question.id, input.questionId), eq(question.workspaceId, ws)))
+      .limit(1)
     if (!q) throw new NotFoundError(`Question not found: ${input.questionId}`)
     if (q.state !== 'clustered') throw new IneligibleError(`Question ${input.questionId} is not clustered (state=${q.state})`)
 
@@ -82,7 +97,15 @@ export async function recordRefinement(input: RecordRefinementInput): Promise<Re
 }
 
 /** Refinement history for a question, oldest first (chronological lineage; transparency view). */
-export async function listRefinements(questionId: string): Promise<Refinement[]> {
+export async function listRefinements(questionId: string, workspaceId?: string): Promise<Refinement[]> {
+  const ws = workspaceId ?? (await getActiveWorkspaceId())
+  // Verify the question exists in this workspace before listing its refinements.
+  const [q] = await db
+    .select({ id: question.id })
+    .from(question)
+    .where(and(eq(question.id, questionId), eq(question.workspaceId, ws)))
+    .limit(1)
+  if (!q) throw new NotFoundError(`Question not found: ${questionId}`)
   return db
     .select()
     .from(refinement)

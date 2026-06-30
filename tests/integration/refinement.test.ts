@@ -1,7 +1,7 @@
-import { afterAll, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { eq, sql } from 'drizzle-orm'
 import { db, pool } from '@/db/client'
-import { datasetVersion, question, refinement } from '@/db/schema'
+import { datasetVersion, question, refinement, workspace } from '@/db/schema'
 import type { ReasoningProvider, RefinementSuggestion } from '@/lib/llm'
 import {
   IneligibleError,
@@ -10,6 +10,7 @@ import {
   recordRefinement,
   suggestRefinement,
 } from '@/lib/refinement'
+import { resetWorkspaceCache, DEFAULT_WORKSPACE_ID } from '@/lib/workspace'
 
 let versionId: number
 
@@ -47,6 +48,8 @@ beforeEach(async () => {
   await db.execute(sql`TRUNCATE TABLE ${refinement} RESTART IDENTITY CASCADE`)
   await db.execute(sql`TRUNCATE TABLE ${question} RESTART IDENTITY CASCADE`)
   await db.execute(sql`TRUNCATE TABLE ${datasetVersion} RESTART IDENTITY CASCADE`)
+  await db.execute(sql`TRUNCATE TABLE ${workspace} RESTART IDENTITY CASCADE`)
+  await db.insert(workspace).values({ id: DEFAULT_WORKSPACE_ID, slug: 'default', name: 'Default' })
   const [v] = await db
     .insert(datasetVersion)
     .values({
@@ -152,5 +155,62 @@ describe('recordRefinement', () => {
         finalText: 'x',
       }),
     ).rejects.toBeInstanceOf(NotFoundError)
+  })
+})
+
+describe('refinement — workspace scoping', () => {
+  const OTHER_WS = '00000000-0000-0000-0000-000000000002'
+
+  afterEach(() => resetWorkspaceCache())
+
+  it('listClustered only returns questions from the active workspace', async () => {
+    await db.insert(workspace).values({ id: OTHER_WS, slug: 'other', name: 'Other' })
+    const [v2] = await db
+      .insert(datasetVersion)
+      .values({
+        workspaceId: OTHER_WS,
+        embeddingModel: 'test',
+        embeddingModelDigest: 'sha256:other',
+        embeddingDim: 768,
+      })
+      .returning()
+    await db.insert(question).values({
+      rawText: 'foreign clustered',
+      canonicalText: 'foreign clustered',
+      embedding: pad([1, 0, 0]),
+      embeddingModelVersion: 'test@sha256:other',
+      workspaceId: OTHER_WS,
+      datasetVersionId: v2.id,
+      visibility: 'anonymous',
+      state: 'clustered',
+    })
+
+    const rows = await listClustered()
+    expect(rows.find((r) => r.canonicalText === 'foreign clustered')).toBeUndefined()
+  })
+
+  it('suggestRefinement throws NotFoundError for a question in another workspace', async () => {
+    await db.insert(workspace).values({ id: OTHER_WS, slug: 'other', name: 'Other' })
+    const [v2] = await db
+      .insert(datasetVersion)
+      .values({
+        workspaceId: OTHER_WS,
+        embeddingModel: 'test',
+        embeddingModelDigest: 'sha256:other',
+        embeddingDim: 768,
+      })
+      .returning()
+    const [foreign] = await db.insert(question).values({
+      rawText: 'foreign clustered',
+      canonicalText: 'foreign clustered',
+      embedding: pad([1, 0, 0]),
+      embeddingModelVersion: 'test@sha256:other',
+      workspaceId: OTHER_WS,
+      datasetVersionId: v2.id,
+      visibility: 'anonymous',
+      state: 'clustered',
+    }).returning()
+
+    await expect(suggestRefinement(foreign.id, stubProvider)).rejects.toBeInstanceOf(NotFoundError)
   })
 })
