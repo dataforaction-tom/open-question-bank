@@ -43,14 +43,27 @@ export async function listCanonical(limit = 100, workspaceId?: string) {
     .limit(limit)
 }
 
-export async function getCampaign(campaignId: string, workspaceId?: string) {
-  const ws = workspaceId ?? (await getActiveWorkspaceId())
+/**
+ * Fetch a campaign and validate it belongs to the given workspace.
+ * Throws NotFoundError if the campaign doesn't exist OR belongs to a different workspace
+ * (don't leak existence across workspace boundaries).
+ */
+export async function requireCampaignInWorkspace(
+  campaignId: string,
+  workspaceId: string,
+): Promise<Campaign> {
   const [c] = await db
     .select()
     .from(campaign)
-    .where(and(eq(campaign.id, campaignId), eq(campaign.workspaceId, ws)))
+    .where(and(eq(campaign.id, campaignId), eq(campaign.workspaceId, workspaceId)))
     .limit(1)
   if (!c) throw new NotFoundError(`Campaign not found: ${campaignId}`)
+  return c
+}
+
+export async function getCampaign(campaignId: string, workspaceId?: string) {
+  const ws = workspaceId ?? (await getActiveWorkspaceId())
+  const c = await requireCampaignInWorkspace(campaignId, ws)
   const members = await db
     .select({ id: question.id, canonicalText: question.canonicalText })
     .from(campaignQuestion)
