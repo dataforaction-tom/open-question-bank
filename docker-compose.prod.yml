@@ -1,0 +1,28 @@
+# Production override for single-host deploys that already have Ollama running natively
+# (avoids a duplicate model download / a second competing LLM process) and that sit behind
+# a reverse proxy (e.g. a Cloudflare Tunnel) rather than exposing ports directly.
+#
+# Usage: docker compose -p <project> -f docker-compose.yml -f docker-compose.prod.yml up -d --build app db
+# (db/app only — the bundled `ollama` service is intentionally not started)
+services:
+  db:
+    restart: unless-stopped
+    # Loopback-only, off the default 5432, so this can sit alongside another local Postgres
+    # (e.g. a dev instance using the base docker-compose.yml) without a port clash. Reachable
+    # from the host for one-off migrate/seed/backup commands, never from outside the host.
+    ports: !override
+      - "127.0.0.1:5434:5432"
+
+  app:
+    restart: unless-stopped
+    environment:
+      # Reuse the host's already-running native Ollama (with models already pulled) instead of
+      # the bundled `ollama` service. Resolves automatically under Docker Desktop.
+      OLLAMA_URL: http://host.docker.internal:11434
+    ports: !override
+      - "3010:3000"
+    # The base file's depends_on includes `ollama`; replaced here since that service isn't
+    # started for this deploy.
+    depends_on: !override
+      db:
+        condition: service_healthy
