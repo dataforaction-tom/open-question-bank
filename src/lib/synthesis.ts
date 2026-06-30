@@ -1,8 +1,10 @@
 import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 import { db } from '@/db/client'
-import { campaign, question, score, synthesis, type Synthesis } from '@/db/schema'
+import { question, score, synthesis, type Synthesis } from '@/db/schema'
 import { IneligibleError, NotFoundError } from '@/lib/errors'
 import { getProvider, type RankedQuestion, type ReasoningProvider } from '@/lib/llm'
+import { getActiveWorkspaceId } from '@/lib/workspace'
+import { requireCampaignInWorkspace } from '@/lib/campaign'
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
 
@@ -19,9 +21,9 @@ export function validateSources(sourceIds: string[], memberIds: Set<string>): st
   return out
 }
 
-async function requireClosed(campaignId: string) {
-  const [c] = await db.select().from(campaign).where(eq(campaign.id, campaignId)).limit(1)
-  if (!c) throw new NotFoundError(`Campaign not found: ${campaignId}`)
+async function requireClosed(campaignId: string, workspaceId?: string) {
+  const ws = workspaceId ?? (await getActiveWorkspaceId())
+  const c = await requireCampaignInWorkspace(campaignId, ws)
   if (c.state !== 'closed') throw new IneligibleError(`Campaign ${campaignId} is not closed (state=${c.state})`)
   return c
 }
@@ -37,8 +39,9 @@ async function requireProposed(synthesisId: string): Promise<Synthesis> {
 export async function proposeSyntheses(
   campaignId: string,
   provider: Pick<ReasoningProvider, 'synthesise'> = getProvider(),
+  workspaceId?: string,
 ): Promise<Synthesis[]> {
-  await requireClosed(campaignId)
+  await requireClosed(campaignId, workspaceId)
   const ranked: RankedQuestion[] = await db
     .select({ id: score.questionId, canonicalText: question.canonicalText })
     .from(score)
@@ -65,7 +68,9 @@ export async function proposeSyntheses(
 }
 
 /** All synthesis rows for a campaign (admin audit), newest first. */
-export async function listSyntheses(campaignId: string): Promise<Synthesis[]> {
+export async function listSyntheses(campaignId: string, workspaceId?: string): Promise<Synthesis[]> {
+  const ws = workspaceId ?? (await getActiveWorkspaceId())
+  await requireCampaignInWorkspace(campaignId, ws)
   return db.select().from(synthesis).where(eq(synthesis.campaignId, campaignId)).orderBy(desc(synthesis.timestamp))
 }
 
@@ -128,8 +133,8 @@ export interface EndorsedSynthesis {
 }
 
 /** Public: endorsed-and-live syntheses for a CLOSED campaign, with resolved lineage. */
-export async function listEndorsedSyntheses(campaignId: string): Promise<EndorsedSynthesis[]> {
-  await requireClosed(campaignId)
+export async function listEndorsedSyntheses(campaignId: string, workspaceId?: string): Promise<EndorsedSynthesis[]> {
+  await requireClosed(campaignId, workspaceId)
   const rows = await db
     .select({
       synthesisedText: synthesis.synthesisedText,

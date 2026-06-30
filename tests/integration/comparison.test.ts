@@ -1,10 +1,11 @@
-import { afterAll, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { and, eq, sql } from 'drizzle-orm'
 import { db, pool } from '@/db/client'
-import { campaign, campaignQuestion, comparison, datasetVersion, question, score } from '@/db/schema'
+import { campaign, campaignQuestion, comparison, datasetVersion, question, score, workspace } from '@/db/schema'
 import { IneligibleError, NotFoundError } from '@/lib/errors'
 import { addQuestions, createCampaign, openComparison } from '@/lib/campaign'
 import { nextPair, recomputeScores, recordComparison } from '@/lib/comparison'
+import { resetWorkspaceCache, DEFAULT_WORKSPACE_ID } from '@/lib/workspace'
 
 let versionId: number
 const MISSING = '00000000-0000-0000-0000-000000000000'
@@ -48,6 +49,8 @@ beforeEach(async () => {
   await db.execute(sql`TRUNCATE TABLE ${campaign} RESTART IDENTITY CASCADE`)
   await db.execute(sql`TRUNCATE TABLE ${question} RESTART IDENTITY CASCADE`)
   await db.execute(sql`TRUNCATE TABLE ${datasetVersion} RESTART IDENTITY CASCADE`)
+  await db.execute(sql`TRUNCATE TABLE ${workspace} RESTART IDENTITY CASCADE`)
+  await db.insert(workspace).values({ id: DEFAULT_WORKSPACE_ID, slug: 'default', name: 'Default' })
   const [v] = await db
     .insert(datasetVersion)
     .values({ embeddingModel: 'test', embeddingModelDigest: 'sha256:test', embeddingDim: 768 })
@@ -229,5 +232,43 @@ describe('recomputeScores', () => {
       expect(r.sigma).toBeCloseTo(prev.sigma, 6)
       expect(r.nComparisons).toBe(prev.nComparisons)
     }
+  })
+})
+
+describe('comparison — workspace scoping', () => {
+  const OTHER_WS = '00000000-0000-0000-0000-000000000002'
+
+  afterEach(() => resetWorkspaceCache())
+
+  it('nextPair throws NotFoundError for a campaign in another workspace', async () => {
+    await db.insert(workspace).values({ id: OTHER_WS, slug: 'other', name: 'Other' })
+    const [foreign] = await db.insert(campaign).values({
+      prompt: 'foreign campaign',
+      comparisonAxis: 'importance',
+      workspaceId: OTHER_WS,
+      state: 'comparing',
+    }).returning()
+
+    await expect(nextPair(foreign.id, 'judge')).rejects.toBeInstanceOf(NotFoundError)
+  })
+
+  it('recordComparison throws NotFoundError for a campaign in another workspace', async () => {
+    await db.insert(workspace).values({ id: OTHER_WS, slug: 'other', name: 'Other' })
+    const [foreign] = await db.insert(campaign).values({
+      prompt: 'foreign campaign',
+      comparisonAxis: 'importance',
+      workspaceId: OTHER_WS,
+      state: 'comparing',
+    }).returning()
+
+    await expect(
+      recordComparison({
+        campaignId: foreign.id,
+        questionAId: MISSING,
+        questionBId: '00000000-0000-0000-0000-000000000099',
+        winnerQuestionId: null,
+        judgeRef: 'judge',
+      }),
+    ).rejects.toBeInstanceOf(NotFoundError)
   })
 })

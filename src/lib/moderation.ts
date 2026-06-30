@@ -1,15 +1,17 @@
-import { asc, eq } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 import { db } from '@/db/client'
 import { moderationEvent, question } from '@/db/schema'
 import { assignToNearestCluster } from '@/lib/clustering'
 import { getProvider, type ReasoningProvider } from '@/lib/llm'
 import { isTheme } from '@/lib/themes'
+import { getActiveWorkspaceId } from '@/lib/workspace'
 
-export async function listPending(limit = 50) {
+export async function listPending(limit = 50, workspaceId?: string) {
+  const ws = workspaceId ?? (await getActiveWorkspaceId())
   return db
     .select({ id: question.id, canonicalText: question.canonicalText, createdAt: question.createdAt })
     .from(question)
-    .where(eq(question.state, 'submitted'))
+    .where(and(eq(question.state, 'submitted'), eq(question.workspaceId, ws)))
     .orderBy(asc(question.createdAt))
     .limit(limit)
 }
@@ -18,11 +20,17 @@ export async function approveQuestion(
   id: string,
   actorRef: string,
   provider: ReasoningProvider = getProvider(),
+  workspaceId?: string,
 ): Promise<{ clusterId: string; created: boolean }> {
+  const ws = workspaceId ?? (await getActiveWorkspaceId())
   // Phase 1 — approve + cluster + set state, atomically. No network call inside the tx.
   let canonicalText = ''
   const result = await db.transaction(async (tx) => {
-    const [q] = await tx.select().from(question).where(eq(question.id, id)).limit(1)
+    const [q] = await tx
+      .select()
+      .from(question)
+      .where(and(eq(question.id, id), eq(question.workspaceId, ws)))
+      .limit(1)
     if (!q) throw new Error(`Question not found: ${id}`)
     if (q.state !== 'submitted') throw new Error(`Question ${id} is not pending (state=${q.state})`)
     canonicalText = q.canonicalText
@@ -47,9 +55,19 @@ export async function approveQuestion(
   return result
 }
 
-export async function rejectQuestion(id: string, actorRef: string, reason?: string): Promise<void> {
+export async function rejectQuestion(
+  id: string,
+  actorRef: string,
+  reason?: string,
+  workspaceId?: string,
+): Promise<void> {
+  const ws = workspaceId ?? (await getActiveWorkspaceId())
   await db.transaction(async (tx) => {
-    const [q] = await tx.select().from(question).where(eq(question.id, id)).limit(1)
+    const [q] = await tx
+      .select()
+      .from(question)
+      .where(and(eq(question.id, id), eq(question.workspaceId, ws)))
+      .limit(1)
     if (!q) throw new Error(`Question not found: ${id}`)
     if (q.state !== 'submitted') throw new Error(`Question ${id} is not pending (state=${q.state})`)
 

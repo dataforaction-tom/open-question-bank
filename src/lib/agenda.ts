@@ -1,8 +1,10 @@
 import { and, asc, desc, eq, inArray, or } from 'drizzle-orm'
 import { db } from '@/db/client'
-import { campaign, campaignQuestion, comparison, question, score } from '@/db/schema'
+import { campaignQuestion, comparison, question, score } from '@/db/schema'
 import { IneligibleError, NotFoundError } from '@/lib/errors'
 import { getVariantCounts } from '@/lib/submission'
+import { getActiveWorkspaceId } from '@/lib/workspace'
+import { requireCampaignInWorkspace } from '@/lib/campaign'
 
 /** A comparison's result from one participant's point of view. Pure. */
 export function outcomeFor(
@@ -14,9 +16,9 @@ export function outcomeFor(
 }
 
 /** The published ranked agenda for a CLOSED campaign. Derived from frozen scores. */
-export async function getAgenda(campaignId: string) {
-  const [c] = await db.select().from(campaign).where(eq(campaign.id, campaignId)).limit(1)
-  if (!c) throw new NotFoundError(`Campaign not found: ${campaignId}`)
+export async function getAgenda(campaignId: string, workspaceId?: string) {
+  const ws = workspaceId ?? (await getActiveWorkspaceId())
+  const c = await requireCampaignInWorkspace(campaignId, ws)
   if (c.state !== 'closed') throw new IneligibleError(`Campaign ${campaignId} is not closed (state=${c.state})`)
 
   // The score table is the authoritative agenda membership: openComparison seeds
@@ -56,9 +58,9 @@ export async function getAgenda(campaignId: string) {
  * The comparisons that produced one item's score, from its own perspective.
  * judge_ref is deliberately never selected — anonymous judging stays unlinkable.
  */
-export async function getQuestionEvidence(campaignId: string, questionId: string) {
-  const [c] = await db.select().from(campaign).where(eq(campaign.id, campaignId)).limit(1)
-  if (!c) throw new NotFoundError(`Campaign not found: ${campaignId}`)
+export async function getQuestionEvidence(campaignId: string, questionId: string, workspaceId?: string) {
+  const ws = workspaceId ?? (await getActiveWorkspaceId())
+  const c = await requireCampaignInWorkspace(campaignId, ws)
   if (c.state !== 'closed') throw new IneligibleError(`Campaign ${campaignId} is not closed (state=${c.state})`)
 
   const [member] = await db

@@ -1,9 +1,10 @@
-import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { eq, sql } from 'drizzle-orm'
 import { db, pool } from '@/db/client'
-import { cluster, datasetVersion, moderationEvent, question } from '@/db/schema'
+import { cluster, datasetVersion, moderationEvent, question, workspace } from '@/db/schema'
 import { approveQuestion, listPending, rejectQuestion } from '@/lib/moderation'
 import { MockProvider } from '@/lib/llm'
+import { resetWorkspaceCache, DEFAULT_WORKSPACE_ID } from '@/lib/workspace'
 
 let versionId: number
 
@@ -32,6 +33,8 @@ beforeEach(async () => {
   await db.execute(sql`TRUNCATE TABLE ${cluster} RESTART IDENTITY CASCADE`)
   await db.execute(sql`TRUNCATE TABLE ${question} RESTART IDENTITY CASCADE`)
   await db.execute(sql`TRUNCATE TABLE ${datasetVersion} RESTART IDENTITY CASCADE`)
+  await db.execute(sql`TRUNCATE TABLE ${workspace} RESTART IDENTITY CASCADE`)
+  await db.insert(workspace).values({ id: DEFAULT_WORKSPACE_ID, slug: 'default', name: 'Default' })
   const [v] = await db
     .insert(datasetVersion)
     .values({
@@ -147,5 +150,61 @@ describe('rejectQuestion', () => {
     const id = await insertSubmitted('q', [1, 0, 0])
     await rejectQuestion(id, 'admin')
     await expect(rejectQuestion(id, 'admin')).rejects.toThrow(/not pending/)
+  })
+})
+
+describe('moderation — workspace scoping', () => {
+  const OTHER_WS = '00000000-0000-0000-0000-000000000002'
+
+  afterEach(() => resetWorkspaceCache())
+
+  it('listPending only returns questions from the active workspace', async () => {
+    await db.insert(workspace).values({ id: OTHER_WS, slug: 'other', name: 'Other' })
+    const [v2] = await db
+      .insert(datasetVersion)
+      .values({
+        workspaceId: OTHER_WS,
+        embeddingModel: 'test',
+        embeddingModelDigest: 'sha256:other',
+        embeddingDim: 768,
+      })
+      .returning()
+    await db.insert(question).values({
+      rawText: 'foreign question',
+      canonicalText: 'foreign question',
+      embeddingModelVersion: 'test@sha256:other',
+      workspaceId: OTHER_WS,
+      datasetVersionId: v2.id,
+      visibility: 'anonymous',
+      state: 'submitted',
+    })
+
+    const pending = await listPending()
+    expect(pending.find((q) => q.canonicalText === 'foreign question')).toBeUndefined()
+  })
+
+  it('approveQuestion throws for a question in another workspace', async () => {
+    await db.insert(workspace).values({ id: OTHER_WS, slug: 'other', name: 'Other' })
+    const [v2] = await db
+      .insert(datasetVersion)
+      .values({
+        workspaceId: OTHER_WS,
+        embeddingModel: 'test',
+        embeddingModelDigest: 'sha256:other',
+        embeddingDim: 768,
+      })
+      .returning()
+    const [foreign] = await db.insert(question).values({
+      rawText: 'foreign approve target',
+      canonicalText: 'foreign approve target',
+      embedding: pad([1, 0, 0]),
+      embeddingModelVersion: 'test@sha256:other',
+      workspaceId: OTHER_WS,
+      datasetVersionId: v2.id,
+      visibility: 'anonymous',
+      state: 'submitted',
+    }).returning()
+
+    await expect(approveQuestion(foreign.id, 'admin')).rejects.toThrow(/not found/i)
   })
 })

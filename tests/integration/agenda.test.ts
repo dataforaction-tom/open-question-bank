@@ -1,11 +1,12 @@
-import { afterAll, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { sql } from 'drizzle-orm'
 import { db, pool } from '@/db/client'
-import { campaign, campaignQuestion, comparison, datasetVersion, question, score } from '@/db/schema'
+import { campaign, campaignQuestion, comparison, datasetVersion, question, score, workspace } from '@/db/schema'
 import { IneligibleError, NotFoundError } from '@/lib/errors'
 import { addQuestions, closeCampaign, createCampaign, openComparison } from '@/lib/campaign'
 import { recordComparison } from '@/lib/comparison'
 import { getAgenda, getQuestionEvidence } from '@/lib/agenda'
+import { resetWorkspaceCache, DEFAULT_WORKSPACE_ID } from '@/lib/workspace'
 
 let versionId: number
 const MISSING = '00000000-0000-0000-0000-000000000000'
@@ -36,6 +37,8 @@ beforeEach(async () => {
   await db.execute(sql`TRUNCATE TABLE ${campaign} RESTART IDENTITY CASCADE`)
   await db.execute(sql`TRUNCATE TABLE ${question} RESTART IDENTITY CASCADE`)
   await db.execute(sql`TRUNCATE TABLE ${datasetVersion} RESTART IDENTITY CASCADE`)
+  await db.execute(sql`TRUNCATE TABLE ${workspace} RESTART IDENTITY CASCADE`)
+  await db.insert(workspace).values({ id: DEFAULT_WORKSPACE_ID, slug: 'default', name: 'Default' })
   const [v] = await db
     .insert(datasetVersion)
     .values({ embeddingModel: 'test', embeddingModelDigest: 'sha256:test', embeddingDim: 768 })
@@ -176,5 +179,35 @@ describe('getQuestionEvidence', () => {
     // Time-ordered: the win against B comes before the draw against C.
     expect(evA[0]).toMatchObject({ outcome: 'won', opponentText: 'Question B' })
     expect(evA[1]).toMatchObject({ outcome: 'drew', opponentText: 'Question C' })
+  })
+})
+
+describe('agenda — workspace scoping', () => {
+  const OTHER_WS = '00000000-0000-0000-0000-000000000002'
+
+  afterEach(() => resetWorkspaceCache())
+
+  it('getAgenda throws NotFoundError for a campaign in another workspace', async () => {
+    await db.insert(workspace).values({ id: OTHER_WS, slug: 'other', name: 'Other' })
+    const [foreign] = await db.insert(campaign).values({
+      prompt: 'foreign closed campaign',
+      comparisonAxis: 'importance',
+      workspaceId: OTHER_WS,
+      state: 'closed',
+    }).returning()
+
+    await expect(getAgenda(foreign.id)).rejects.toBeInstanceOf(NotFoundError)
+  })
+
+  it('getQuestionEvidence throws NotFoundError for a campaign in another workspace', async () => {
+    await db.insert(workspace).values({ id: OTHER_WS, slug: 'other', name: 'Other' })
+    const [foreign] = await db.insert(campaign).values({
+      prompt: 'foreign closed campaign',
+      comparisonAxis: 'importance',
+      workspaceId: OTHER_WS,
+      state: 'closed',
+    }).returning()
+
+    await expect(getQuestionEvidence(foreign.id, MISSING)).rejects.toBeInstanceOf(NotFoundError)
   })
 })
