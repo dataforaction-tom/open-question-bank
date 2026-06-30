@@ -1,40 +1,45 @@
 # Question Bank
 
-**A collective intelligence and prioritisation tool for questions.**
+**A tool for working out which questions a community should prioritise.**
 
-Question Bank takes a messy pool of submitted questions and produces a trustworthy, prioritised, synthesised agenda — with every transformation logged, versioned, and open. It is a **prioritisation instrument first**; answering questions is an explicit later phase, out of scope for v1.
+Question Bank takes a pile of submitted questions and turns it into a short, trustworthy, ranked
+list — with every change to a question logged, so you can always see how it got there. It only
+prioritises questions; actually answering them is a separate, later problem, out of scope for v1.
 
-Open source and **local-first**: the whole system runs on a single machine with no required external dependency. A hosted instance is offered too, on the same backend.
+Open source and **local-first**: it runs on a single machine, no external services required. A
+hosted version is also available, on the same code.
 
-> Status: **v0.2 — full pipeline plus public surface, built and tested, with a first deployed instance.** The whole spine runs end to end with unit, integration, and end-to-end tests: submit → embed (pinned `nomic-embed-text`) → dedup-at-source → moderation + clustering → LLM-assisted refinement → definedness scoring + curation → pairwise comparison (TrueSkill, adaptive pairing) → ranked agenda → synthesis (LLM proposes, human endorses). On top of that spine: full-text search and browsable similarity (cosine-distance, tuned cutoff — no re-embedding), a public discovery surface (campaign index, question bank, ranked agendas, open judging, question-relationship graph), campaign front doors (submit openly or into a campaign), admin + public dashboards, a workspace scoping seam on every core module (single-tenant today, additive to multi-tenant later), and a theme switcher. The [technical specification](./question-bank-spec.md) (v0.1) remains the source of truth for the core pipeline design; the [improvement plan](./IMPROVEMENT-PLAN.md) tracks what shipped against the v0.2 roadmap below.
+> Status: **v0.2 — the full pipeline plus a public site, built and tested, with a first deployed instance.** End to end: submit → embed (pinned `nomic-embed-text`) → check for duplicates → moderation + grouping → AI-assisted wording suggestions → quality check + curation → head-to-head comparison (TrueSkill ranking, adaptive pairing) → ranked agenda → synthesis (AI drafts, a human signs off). On top of that: full-text search and "find similar" (reusing existing embeddings, tuned cutoff, no re-embedding), a public site (campaign index, question bank, ranked agendas, open judging, a question-relationship map), submitting into a specific campaign as well as openly, admin and public dashboards, workspace scoping on every core module (single org today, ready to support more later), and a theme switcher. The [technical specification](./question-bank-spec.md) (v0.1) is still the source of truth for the core pipeline design; the [improvement plan](./IMPROVEMENT-PLAN.md) tracks what's shipped against the roadmap below.
 
-## The defensible core: the refinement log
+## How question wording gets improved
 
-Every LLM-assisted improvement to a question is captured as an append-only **transformation record** — building an open, versioned training set, with published scoring criteria, as a side effect of normal use.
+When the AI assistant suggests clearer wording for a question, that suggestion is never applied
+silently. Every suggestion, and the human decision to accept, edit, or reject it, is recorded —
+so there's a full, open history of how a question's wording changed, and why.
 
-## Design commitments (non-negotiable)
+## What we won't compromise on
 
-- **Transparency** — every ranking, grouping, and refinement is explainable and auditable. No black boxes.
-- **Reproducibility** — the embedding model is pinned per dataset version; re-clustering happens only at version boundaries. Rankings never silently shift.
-- **Provenance** — every record carries the model, model version, actor, and timestamp that produced it. All transformation tables are append-only.
-- **Openness** — data is exportable under a defined licence; anonymous submissions are genuinely *unlinkable*.
+- **Transparency** — every ranking, grouping, and wording change is explainable and auditable. No black boxes.
+- **Reproducibility** — the embedding model is pinned per dataset version; questions are only re-grouped when that version changes. Rankings never silently shift underneath you.
+- **Provenance** — every record carries the model, model version, actor, and timestamp that produced it. Nothing here is ever edited in place or deleted.
+- **Openness** — data is exportable under a defined licence; anonymous submissions are genuinely *unlinkable*, even to admins.
 
-## The pipeline (the product)
+## The pipeline
 
 ```
 Submit
   → Embed (pinned model)
-  → Dedup-at-source (show nearest existing; "yours or new?")
-  → Cluster (assign-to-nearest within active version)
-  → LLM-assisted refinement (logged transformation)
-  → Definedness scoring (at curation, against published rubric)
-  → Admin curates canonical comparison set
-  → Pairwise prioritisation (TrueSkill, adaptive pairing)
+  → Check for duplicates (show the nearest existing match; "yours or new?")
+  → Group with similar questions (within the current dataset version)
+  → AI-assisted wording suggestions (every suggestion and decision logged)
+  → Quality check (at curation time, against a published rubric)
+  → Admin curates the comparison set
+  → Head-to-head ranking (TrueSkill, adaptive pairing)
   → Ranked agenda
-  → Synthesis (LLM proposes, human endorses, lineage preserved)
+  → Synthesis (AI drafts, a human signs off, lineage kept)
 ```
 
-The dashboards are a read layer on top of this spine.
+The dashboards are a read-only view on top of this.
 
 ## Stack (local-first)
 
@@ -45,9 +50,11 @@ A single `docker compose` stack, designed to run on one machine (target: Mac min
 | **Ollama** | Serves the pinned **embedding model** *and* the default **reasoning LLM** — two roles, one server. |
 | **Postgres + pgvector** | One store for all relational/audit tables *and* the embedding vectors. No separate vector database. |
 | **App (Next.js)** | Submit flow, front end, admin panel, API. |
-| **OpenRouter** *(optional)* | Remote reasoning LLM for synthesis only, if you want a frontier model. A config bonus, never a requirement. |
+| **OpenRouter** *(optional)* | A remote model for synthesis only, if you want something more capable. Never required. |
 
-**Model separation is critical:** the embedding model is *pinned per dataset version* (changing it forces a re-embed migration and a new version); the reasoning LLM is freely swappable per call and only ever *proposes* — humans accept.
+The embedding model is *pinned per dataset version* — changing it means a full re-embed and a new
+version. The reasoning LLM is freely swappable per call, and only ever *suggests* — a human always
+decides.
 
 ## Getting started
 
@@ -65,10 +72,9 @@ Then open `http://localhost:3000/submit` and submit a question. Run the tests wi
 
 ## Documentation
 
-- [`docs/user-guide.md`](./docs/user-guide.md) — end-user and admin guide (plain language; also hosted via `mkdocs.yml`)
-- [`docs/changelog.md`](./docs/changelog.md) — dated, user-facing changelog
+- [User guide](https://dataforaction-tom.github.io/open-question-bank/) — for everyone using the site, and for admins running it (also in [`docs/user-guide.md`](./docs/user-guide.md) and [`docs/changelog.md`](./docs/changelog.md))
 - [`question-bank-spec.md`](./question-bank-spec.md) — full technical specification (source of truth)
-- [`definedness-rubric.md`](./definedness-rubric.md) — the five definedness criteria, defined (open training-set docs)
+- [`definedness-rubric.md`](./definedness-rubric.md) — the five quality criteria, defined (open training-set docs)
 - [`IMPROVEMENT-PLAN.md`](./IMPROVEMENT-PLAN.md) — the v0.1 → v0.2 roadmap (see below)
 
 ## Deployment
@@ -84,22 +90,14 @@ docker compose -p <project> -f docker-compose.yml -f docker-compose.prod.yml up 
 
 ## Roadmap
 
-The v0.1 pipeline and the [improvement plan](./IMPROVEMENT-PLAN.md)'s phases 1–5 are complete and
-shipped:
+The v0.1 pipeline and the [improvement plan](./IMPROVEMENT-PLAN.md)'s phases 1–5 are done and shipped:
 
-1. ✅ **Workspace seam** — every core module (`campaign`, `moderation`, `refinement`, `curation`,
-   `comparison`, `synthesis`, `agenda`) scopes by workspace (one default workspace today; additive
-   to full multi-tenancy later).
-2. ✅ **Search & browsable similarity** — full-text search (Postgres `tsvector`) and "find similar"
-   (reusing existing embeddings, no re-embed, tuned distance cutoff), with a public browse surface
-   and a question-relationship graph.
+1. ✅ **Workspace scoping** — every core module (campaigns, moderation, refinement, curation, comparison, synthesis, agenda) is scoped by workspace (one workspace today; ready to support more without a rewrite).
+2. ✅ **Search & "find similar"** — full-text search and similarity browsing (reusing existing embeddings, no re-embedding, tuned cutoff), plus a public browse surface and a question-relationship map.
 3. ✅ **Campaign front doors** — submit openly *or* into a specific campaign; a public campaign index.
-4. ✅ **Dashboards & charts** — admin pipeline-health dashboard and a public ranking-confidence view,
-   themed to the palette with accessible equivalents.
-5. ✅ **Polish & coherence** — consistent nav (including a theme switcher), plain-language admin
-   copy, empty/loading/error states.
-6. **Full multi-tenancy** *(conditional, not started)* — workspace lifecycle and isolation UI, built
-   on the seam from phase 1.
+4. ✅ **Dashboards & charts** — an admin pipeline-health dashboard and a public ranking-confidence view, themed and accessible.
+5. ✅ **Polish & coherence** — consistent navigation (including a theme switcher), plain-language admin copy, empty/loading/error states.
+6. **Full multi-tenancy** *(not started, optional)* — workspace creation and isolation in the UI, built on the scoping work from phase 1.
 
 ## Launch decisions (resolved)
 
@@ -107,8 +105,8 @@ The four open decisions from the spec are settled (2026-06-01):
 
 1. **Export licence** — **CC0** (maximally open, frictionless downstream analysis).
 2. **Default judging auth** — **open + fingerprinted** (per-campaign override to auth-required retained).
-3. **Pinned embedding model** — **`nomic-embed-text`** (768-dim, fixing the pgvector column width). A local bake-off vs `mxbai-embed-large` / `bge-m3` still confirms before the first real migration.
-4. **Definedness rubric** — five criteria defined in [`definedness-rubric.md`](./definedness-rubric.md): specific, answerable, scoped, non-leading, single-barrelled.
+3. **Pinned embedding model** — **`nomic-embed-text`** (768-dim, fixing the pgvector column width). Still want to compare it against `mxbai-embed-large` / `bge-m3` before the first real migration.
+4. **Quality rubric** — five criteria defined in [`definedness-rubric.md`](./definedness-rubric.md): specific, answerable, scoped, non-leading, single-barrelled.
 
 ## Licence
 
