@@ -1,11 +1,12 @@
-import { afterAll, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { eq, sql } from 'drizzle-orm'
 import { db, pool } from '@/db/client'
-import { datasetVersion, definednessScore, moderationEvent, question } from '@/db/schema'
+import { datasetVersion, definednessScore, moderationEvent, question, workspace } from '@/db/schema'
 import type { ReasoningProvider, ScoreResult } from '@/lib/llm'
 import { ProviderError } from '@/lib/llm'
 import { IneligibleError, NotFoundError } from '@/lib/errors'
 import { currentScores, listScores, promoteToCanonical, scoreQuestion } from '@/lib/curation'
+import { resetWorkspaceCache, DEFAULT_WORKSPACE_ID } from '@/lib/workspace'
 
 let versionId: number
 
@@ -56,6 +57,8 @@ beforeEach(async () => {
   await db.execute(sql`TRUNCATE TABLE ${moderationEvent} RESTART IDENTITY CASCADE`)
   await db.execute(sql`TRUNCATE TABLE ${question} RESTART IDENTITY CASCADE`)
   await db.execute(sql`TRUNCATE TABLE ${datasetVersion} RESTART IDENTITY CASCADE`)
+  await db.execute(sql`TRUNCATE TABLE ${workspace} RESTART IDENTITY CASCADE`)
+  await db.insert(workspace).values({ id: DEFAULT_WORKSPACE_ID, slug: 'default', name: 'Default' })
   const [v] = await db
     .insert(datasetVersion)
     .values({ embeddingModel: 'test', embeddingModelDigest: 'sha256:test', embeddingDim: 768 })
@@ -149,5 +152,61 @@ describe('promoteToCanonical', () => {
 
   it('throws NotFoundError for a missing question', async () => {
     await expect(promoteToCanonical(MISSING_ID, 'admin')).rejects.toBeInstanceOf(NotFoundError)
+  })
+})
+
+describe('curation — workspace scoping', () => {
+  const OTHER_WS = '00000000-0000-0000-0000-000000000002'
+
+  afterEach(() => resetWorkspaceCache())
+
+  it('listScores throws NotFoundError for a question in another workspace', async () => {
+    await db.insert(workspace).values({ id: OTHER_WS, slug: 'other', name: 'Other' })
+    const [v2] = await db
+      .insert(datasetVersion)
+      .values({
+        workspaceId: OTHER_WS,
+        embeddingModel: 'test',
+        embeddingModelDigest: 'sha256:other',
+        embeddingDim: 768,
+      })
+      .returning()
+    const [foreign] = await db.insert(question).values({
+      rawText: 'foreign clustered',
+      canonicalText: 'foreign clustered',
+      embedding: pad([1, 0, 0]),
+      embeddingModelVersion: 'test@sha256:other',
+      workspaceId: OTHER_WS,
+      datasetVersionId: v2.id,
+      visibility: 'anonymous',
+      state: 'clustered',
+    }).returning()
+
+    await expect(listScores(foreign.id)).rejects.toBeInstanceOf(NotFoundError)
+  })
+
+  it('promoteToCanonical throws NotFoundError for a question in another workspace', async () => {
+    await db.insert(workspace).values({ id: OTHER_WS, slug: 'other', name: 'Other' })
+    const [v2] = await db
+      .insert(datasetVersion)
+      .values({
+        workspaceId: OTHER_WS,
+        embeddingModel: 'test',
+        embeddingModelDigest: 'sha256:other',
+        embeddingDim: 768,
+      })
+      .returning()
+    const [foreign] = await db.insert(question).values({
+      rawText: 'foreign promote target',
+      canonicalText: 'foreign promote target',
+      embedding: pad([1, 0, 0]),
+      embeddingModelVersion: 'test@sha256:other',
+      workspaceId: OTHER_WS,
+      datasetVersionId: v2.id,
+      visibility: 'anonymous',
+      state: 'clustered',
+    }).returning()
+
+    await expect(promoteToCanonical(foreign.id, 'admin')).rejects.toBeInstanceOf(NotFoundError)
   })
 })

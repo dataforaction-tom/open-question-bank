@@ -1,4 +1,4 @@
-import { asc, eq } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 import { db } from '@/db/client'
 import {
   definednessScore,
@@ -9,6 +9,7 @@ import {
 } from '@/db/schema'
 import { IneligibleError, NotFoundError } from '@/lib/errors'
 import { getProvider, type ReasoningProvider } from '@/lib/llm'
+import { getActiveWorkspaceId } from '@/lib/workspace'
 
 /**
  * Run the reasoning LLM's definedness assessment and persist five append-only rows
@@ -19,8 +20,14 @@ import { getProvider, type ReasoningProvider } from '@/lib/llm'
 export async function scoreQuestion(
   questionId: string,
   provider: Pick<ReasoningProvider, 'score'> = getProvider(),
+  workspaceId?: string,
 ): Promise<DefinednessScore[]> {
-  const [q] = await db.select().from(question).where(eq(question.id, questionId)).limit(1)
+  const ws = workspaceId ?? (await getActiveWorkspaceId())
+  const [q] = await db
+    .select()
+    .from(question)
+    .where(and(eq(question.id, questionId), eq(question.workspaceId, ws)))
+    .limit(1)
   if (!q) throw new NotFoundError(`Question not found: ${questionId}`)
   if (q.state !== 'clustered') throw new IneligibleError(`Question ${questionId} is not clustered (state=${q.state})`)
 
@@ -41,8 +48,13 @@ export async function scoreQuestion(
 }
 
 /** Full score history, oldest first. 404s on an unknown question (no silent empty list). */
-export async function listScores(questionId: string): Promise<DefinednessScore[]> {
-  const [q] = await db.select({ id: question.id }).from(question).where(eq(question.id, questionId)).limit(1)
+export async function listScores(questionId: string, workspaceId?: string): Promise<DefinednessScore[]> {
+  const ws = workspaceId ?? (await getActiveWorkspaceId())
+  const [q] = await db
+    .select({ id: question.id })
+    .from(question)
+    .where(and(eq(question.id, questionId), eq(question.workspaceId, ws)))
+    .limit(1)
   if (!q) throw new NotFoundError(`Question not found: ${questionId}`)
   return db
     .select()
@@ -63,9 +75,18 @@ export function currentScores(history: DefinednessScore[]): DefinednessScore[] {
  * so concurrent promotes cannot double-append audit rows. No scoring precondition —
  * the human stays in control (design §3).
  */
-export async function promoteToCanonical(questionId: string, actorRef: string): Promise<Question> {
+export async function promoteToCanonical(
+  questionId: string,
+  actorRef: string,
+  workspaceId?: string,
+): Promise<Question> {
+  const ws = workspaceId ?? (await getActiveWorkspaceId())
   return db.transaction(async (tx) => {
-    const [q] = await tx.select().from(question).where(eq(question.id, questionId)).limit(1)
+    const [q] = await tx
+      .select()
+      .from(question)
+      .where(and(eq(question.id, questionId), eq(question.workspaceId, ws)))
+      .limit(1)
     if (!q) throw new NotFoundError(`Question not found: ${questionId}`)
     if (q.state !== 'clustered') throw new IneligibleError(`Question ${questionId} is not clustered (state=${q.state})`)
 
