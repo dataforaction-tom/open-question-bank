@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { buttonClasses } from './Button'
 
 const links = [
   { href: '/', label: 'Home' },
@@ -30,6 +31,9 @@ export function PublicNav() {
           </Link>
         )
       })}
+      <Link href="/admin/login" className={buttonClasses('ghost', 'ml-auto')}>
+        Log in
+      </Link>
     </>
   )
 }
