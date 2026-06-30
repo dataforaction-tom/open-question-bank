@@ -6,7 +6,7 @@ Question Bank takes a messy pool of submitted questions and produces a trustwort
 
 Open source and **local-first**: the whole system runs on a single machine with no required external dependency. A hosted instance is offered too, on the same backend.
 
-> Status: **Full pipeline built and tested.** The [technical specification](./question-bank-spec.md) is finalised (v0.1) and the whole spine runs locally with unit, integration, and end-to-end tests: submit → embed (pinned `nomic-embed-text`) → dedup-at-source → moderation + clustering → LLM-assisted refinement → definedness scoring + curation → pairwise comparison (TrueSkill, adaptive pairing) → ranked agenda → synthesis (LLM proposes, human endorses). A public discovery surface (campaign index, question bank, ranked agendas, open judging) is in place. The next steps — workspace scoping, full-text search, browsable similarity, campaign front doors, and dashboards — are tracked in the [improvement plan](./IMPROVEMENT-PLAN.md).
+> Status: **v0.2 — full pipeline plus public surface, built and tested, with a first deployed instance.** The whole spine runs end to end with unit, integration, and end-to-end tests: submit → embed (pinned `nomic-embed-text`) → dedup-at-source → moderation + clustering → LLM-assisted refinement → definedness scoring + curation → pairwise comparison (TrueSkill, adaptive pairing) → ranked agenda → synthesis (LLM proposes, human endorses). On top of that spine: full-text search and browsable similarity (cosine-distance, tuned cutoff — no re-embedding), a public discovery surface (campaign index, question bank, ranked agendas, open judging, question-relationship graph), campaign front doors (submit openly or into a campaign), admin + public dashboards, a workspace scoping seam on every core module (single-tenant today, additive to multi-tenant later), and a theme switcher. The [technical specification](./question-bank-spec.md) (v0.1) remains the source of truth for the core pipeline design; the [improvement plan](./IMPROVEMENT-PLAN.md) tracks what shipped against the v0.2 roadmap below.
 
 ## The defensible core: the refinement log
 
@@ -65,24 +65,41 @@ Then open `http://localhost:3000/submit` and submit a question. Run the tests wi
 
 ## Documentation
 
+- [`docs/user-guide.md`](./docs/user-guide.md) — end-user and admin guide (plain language; also hosted via `mkdocs.yml`)
+- [`docs/changelog.md`](./docs/changelog.md) — dated, user-facing changelog
 - [`question-bank-spec.md`](./question-bank-spec.md) — full technical specification (source of truth)
 - [`definedness-rubric.md`](./definedness-rubric.md) — the five definedness criteria, defined (open training-set docs)
 - [`IMPROVEMENT-PLAN.md`](./IMPROVEMENT-PLAN.md) — the v0.1 → v0.2 roadmap (see below)
 
+## Deployment
+
+The repo ships a `Dockerfile` and `docker-compose.yml` (app + Postgres/pgvector + Ollama) for a
+self-contained single-host deploy. `docker-compose.prod.yml` is an override for hosts that already
+run Ollama natively — it points the app at the host's Ollama instead of bundling a second one, and
+drops direct port exposure for a reverse-proxy setup (e.g. a Cloudflare Tunnel):
+
+```bash
+docker compose -p <project> -f docker-compose.yml -f docker-compose.prod.yml up -d --build app db
+```
+
 ## Roadmap
 
-The pipeline above is complete. The [improvement plan](./IMPROVEMENT-PLAN.md) takes the app from a
-rigorous-but-narrow prioritisation instrument to the fuller product in the brief, phase by phase:
+The v0.1 pipeline and the [improvement plan](./IMPROVEMENT-PLAN.md)'s phases 1–5 are complete and
+shipped:
 
-1. **Workspace seam** — scope every query through a workspace so a hosted, multi-org future is an
-   additive change, not a rewrite (one default workspace for now).
-2. **Search & browsable similarity** — full-text search (Postgres `tsvector`) and "find similar"
-   (reusing existing embeddings, no re-embed), with a public browse surface.
-3. **Campaign front doors** — submit openly *or* into a specific campaign; a public campaign index.
-4. **Dashboards & charts** — a visual read layer (pipeline health, ranking confidence) on existing
-   data, themed to the palette and with accessible equivalents.
-5. **Polish & coherence** — consistent navigation, empty/loading/error states, responsive QA.
-6. **Full multi-tenancy** *(conditional)* — workspace lifecycle and isolation, built on the seam.
+1. ✅ **Workspace seam** — every core module (`campaign`, `moderation`, `refinement`, `curation`,
+   `comparison`, `synthesis`, `agenda`) scopes by workspace (one default workspace today; additive
+   to full multi-tenancy later).
+2. ✅ **Search & browsable similarity** — full-text search (Postgres `tsvector`) and "find similar"
+   (reusing existing embeddings, no re-embed, tuned distance cutoff), with a public browse surface
+   and a question-relationship graph.
+3. ✅ **Campaign front doors** — submit openly *or* into a specific campaign; a public campaign index.
+4. ✅ **Dashboards & charts** — admin pipeline-health dashboard and a public ranking-confidence view,
+   themed to the palette with accessible equivalents.
+5. ✅ **Polish & coherence** — consistent nav (including a theme switcher), plain-language admin
+   copy, empty/loading/error states.
+6. **Full multi-tenancy** *(conditional, not started)* — workspace lifecycle and isolation UI, built
+   on the seam from phase 1.
 
 ## Launch decisions (resolved)
 
