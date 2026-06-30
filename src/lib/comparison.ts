@@ -4,6 +4,8 @@ import { campaign, campaignQuestion, comparison, question, score } from '@/db/sc
 import { IneligibleError, NotFoundError } from '@/lib/errors'
 import { initialRating, update, type Rating } from '@/lib/trueskill'
 import { selectPair, pairKey } from '@/lib/pairing'
+import { getActiveWorkspaceId } from '@/lib/workspace'
+import { requireCampaignInWorkspace } from '@/lib/campaign'
 
 // The transaction handle Drizzle hands to db.transaction() callbacks — lets
 // helpers run inside a transaction without casting away the db type.
@@ -35,9 +37,9 @@ function applyOutcome(a: Rating, b: Rating, winner: 'a' | 'b' | 'draw'): [Rating
   return [na, nb]
 }
 
-export async function nextPair(campaignId: string, judgeRef: string) {
-  const [c] = await db.select().from(campaign).where(eq(campaign.id, campaignId)).limit(1)
-  if (!c) throw new NotFoundError(`Campaign not found: ${campaignId}`)
+export async function nextPair(campaignId: string, judgeRef: string, workspaceId?: string) {
+  const ws = workspaceId ?? (await getActiveWorkspaceId())
+  const c = await requireCampaignInWorkspace(campaignId, ws)
   if (c.state !== 'comparing') throw new IneligibleError(`Campaign ${campaignId} is not comparing (state=${c.state})`)
 
   const rows = await db
@@ -74,6 +76,8 @@ export interface RecordComparisonInput {
   winnerQuestionId: string | null // null = draw
   judgeRef: string
   servedReason?: string | null
+  /** Active workspace id. If omitted, resolves to the default workspace. */
+  workspaceId?: string
 }
 
 export async function recordComparison(input: RecordComparisonInput) {
@@ -84,9 +88,9 @@ export async function recordComparison(input: RecordComparisonInput) {
     throw new IneligibleError('winner must be question A, question B, or null (draw)')
   }
 
+  const ws = input.workspaceId ?? (await getActiveWorkspaceId())
   return db.transaction(async (tx) => {
-    const [c] = await tx.select().from(campaign).where(eq(campaign.id, campaignId)).limit(1)
-    if (!c) throw new NotFoundError(`Campaign not found: ${campaignId}`)
+    const c = await requireCampaignInWorkspace(campaignId, ws)
     if (c.state !== 'comparing') throw new IneligibleError(`Campaign ${campaignId} is not comparing (state=${c.state})`)
 
     // Verify both questions are members of the campaign.
@@ -165,7 +169,9 @@ export async function recordComparison(input: RecordComparisonInput) {
 }
 
 /** Rebuild every score for a campaign by replaying the append-only log in order. */
-export async function recomputeScores(campaignId: string) {
+export async function recomputeScores(campaignId: string, workspaceId?: string) {
+  const ws = workspaceId ?? (await getActiveWorkspaceId())
+  await requireCampaignInWorkspace(campaignId, ws)
   return db.transaction(async (tx) => {
     const members = await tx
       .select({ questionId: campaignQuestion.questionId })
