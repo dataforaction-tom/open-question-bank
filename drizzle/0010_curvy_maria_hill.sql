@@ -1,0 +1,1 @@
+ALTER TABLE "dataset_version" ADD COLUMN "similarity_threshold" double precision DEFAULT 0.42 NOT NULL;

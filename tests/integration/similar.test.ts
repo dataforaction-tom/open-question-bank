@@ -60,13 +60,23 @@ afterAll(async () => {
 describe('findSimilarQuestions', () => {
   it('returns neighbours nearest-first, excluding the source itself', async () => {
     const source = await q('the source', [1, 0, 0])
-    const near = await q('the near one', [0.95, 0.05, 0])
-    const far = await q('the far one', [0, 1, 0])
+    const near = await q('the near one', [0.99, 0.01, 0])
+    const nearer = await q('the nearer one', [0.995, 0.005, 0])
 
     const results = await findSimilarQuestions(source)
-    expect(results.map((r) => r.id)).toEqual([near, far])
+    expect(results.map((r) => r.id)).toEqual([nearer, near])
     expect(results.map((r) => r.id)).not.toContain(source)
     expect(results[0].distance).toBeLessThan(results[1].distance)
+  })
+
+  it('excludes neighbours beyond the dataset version similarity threshold (default 0.42)', async () => {
+    const source = await q('the source', [1, 0, 0])
+    const near = await q('the near one', [0.95, 0.05, 0]) // cosine distance ≈ 0.0026, within threshold
+    const far = await q('the unrelated one', [0, 1, 0]) // orthogonal, cosine distance = 1, beyond threshold
+
+    const results = await findSimilarQuestions(source)
+    expect(results.map((r) => r.id)).toEqual([near])
+    expect(results.map((r) => r.id)).not.toContain(far)
   })
 
   it('reuses existing embeddings only — never re-embeds (no model call needed here)', async () => {

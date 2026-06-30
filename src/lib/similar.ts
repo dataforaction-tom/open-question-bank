@@ -1,6 +1,6 @@
-import { and, asc, cosineDistance, eq, inArray, isNotNull, ne, sql } from 'drizzle-orm'
+import { and, asc, cosineDistance, eq, inArray, isNotNull, lt, ne, sql } from 'drizzle-orm'
 import { db } from '@/db/client'
-import { question } from '@/db/schema'
+import { datasetVersion, question } from '@/db/schema'
 import { NotFoundError } from '@/lib/errors'
 import { PUBLIC_SEARCH_STATES, type QuestionState } from '@/lib/search'
 import { getActiveWorkspaceId } from '@/lib/workspace'
@@ -41,8 +41,10 @@ export async function findSimilarQuestions(
     .select({
       embedding: question.embedding,
       datasetVersionId: question.datasetVersionId,
+      similarityThreshold: datasetVersion.similarityThreshold,
     })
     .from(question)
+    .innerJoin(datasetVersion, eq(question.datasetVersionId, datasetVersion.id))
     .where(
       and(
         eq(question.id, questionId),
@@ -73,6 +75,7 @@ export async function findSimilarQuestions(
         // Skip embeddingless rows: their cosine distance is NULL and would otherwise map to 0
         // (a false "perfect match") when the result set is under the limit.
         isNotNull(question.embedding),
+        lt(distance, source.similarityThreshold),
       ),
     )
     .orderBy(asc(distance))
