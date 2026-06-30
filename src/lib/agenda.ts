@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray, or } from 'drizzle-orm'
 import { db } from '@/db/client'
-import { campaign, campaignQuestion, comparison, question, score } from '@/db/schema'
+import { campaignQuestion, comparison, question, score } from '@/db/schema'
 import { IneligibleError, NotFoundError } from '@/lib/errors'
 import { getVariantCounts } from '@/lib/submission'
 import { getActiveWorkspaceId } from '@/lib/workspace'

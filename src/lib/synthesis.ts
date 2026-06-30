@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 import { db } from '@/db/client'
-import { campaign, question, score, synthesis, type Synthesis } from '@/db/schema'
+import { question, score, synthesis, type Synthesis } from '@/db/schema'
 import { IneligibleError, NotFoundError } from '@/lib/errors'
 import { getProvider, type RankedQuestion, type ReasoningProvider } from '@/lib/llm'
 import { getActiveWorkspaceId } from '@/lib/workspace'
