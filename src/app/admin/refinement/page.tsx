@@ -117,6 +117,10 @@ export default function RefinementPage() {
       <div className="space-y-1">
         <p className="eyebrow">Refine</p>
         <h1 className="text-3xl">Refinement</h1>
+        <p className="text-muted">
+          Optional AI suggestions to improve a question&apos;s wording — use any time before it&apos;s
+          marked ready.
+        </p>
       </div>
 
       {message && (
@@ -197,7 +201,7 @@ export default function RefinementPage() {
           )}
         </section>
       ) : questions.length === 0 ? (
-        <EmptyState>No clustered questions to refine.</EmptyState>
+        <EmptyState>No questions ready for wording suggestions yet.</EmptyState>
       ) : (
         <ul className="space-y-3 list-none p-0">
           {questions.map((q) => (
@@ -210,7 +214,7 @@ export default function RefinementPage() {
                   onClick={() => suggest(q.id)}
                   disabled={busy}
                 >
-                  Suggest refinement
+                  Suggest better wording
                 </Button>
               </Card>
             </li>

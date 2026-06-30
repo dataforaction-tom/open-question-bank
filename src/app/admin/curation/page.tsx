@@ -86,7 +86,7 @@ export default function CurationPage() {
     try {
       const res = await fetch(`/api/admin/questions/${active.id}/promote`, { method: 'POST' })
       const data = await res.json()
-      setMessage(res.ok ? 'Promoted to canonical.' : (data.error ?? 'Error'))
+      setMessage(res.ok ? 'Marked as ready.' : (data.error ?? 'Error'))
       if (res.ok) setActive(null)
     } catch {
       setMessage('Network error — please try again.')
@@ -109,6 +109,10 @@ export default function CurationPage() {
       <div className="space-y-1">
         <p className="eyebrow">Curate</p>
         <h1 className="text-3xl">Curation</h1>
+        <p className="text-muted">
+          Run a quality check on questions, then mark the ready ones so they can be used in
+          campaigns.
+        </p>
       </div>
 
       {message && (
@@ -126,10 +130,10 @@ export default function CurationPage() {
 
           <div className="flex flex-wrap gap-2">
             <Button type="button" onClick={score} disabled={busy}>
-              Score definedness
+              Check quality
             </Button>
             <Button type="button" variant="accent" onClick={promote} disabled={busy}>
-              Promote to canonical
+              Mark as ready
             </Button>
             <Button type="button" variant="quiet" onClick={() => setActive(null)} disabled={busy}>
               Back
@@ -168,12 +172,12 @@ export default function CurationPage() {
             </Card>
           ) : (
             <p className="text-muted">
-              No scores yet — scoring is optional; you can promote without it.
+              No quality check yet — it&apos;s optional, you can mark this ready without it.
             </p>
           )}
         </section>
       ) : questions.length === 0 ? (
-        <EmptyState>No clustered questions to curate.</EmptyState>
+        <EmptyState>No questions ready for review yet.</EmptyState>
       ) : (
         <ul className="space-y-3 list-none p-0">
           {questions.map((q) => (
@@ -193,7 +197,7 @@ export default function CurationPage() {
                   onClick={() => open(q)}
                   disabled={busy}
                 >
-                  Curate
+                  Review
                 </Button>
               </Card>
             </li>

@@ -6,12 +6,15 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Field'
 import { Notice } from '@/components/ui/Notice'
+import { Stamp } from '@/components/ui/Stamp'
 import { EmptyState } from '@/components/ui/EmptyState'
 
 interface Pending {
   id: string
   canonicalText: string
   createdAt: string
+  originatingCampaignId: string | null
+  originatingCampaignPrompt: string | null
 }
 
 export default function ModerationPage() {
@@ -41,8 +44,8 @@ export default function ModerationPage() {
       setMessage(
         res.ok
           ? data.created
-            ? 'Approved — formed a new cluster.'
-            : 'Approved — joined an existing cluster.'
+            ? 'Approved — this is the first question like it.'
+            : 'Approved — grouped with similar questions already in the queue.'
           : (data.error ?? 'Error'),
       )
     } catch {
@@ -76,6 +79,10 @@ export default function ModerationPage() {
       <div className="space-y-1">
         <p className="eyebrow">Queue</p>
         <h1 className="text-3xl">Moderation queue</h1>
+        <p className="text-muted">
+          Accept or reject newly submitted questions. Approved ones move on to wording suggestions
+          and then a quality check.
+        </p>
       </div>
 
       {message && (
@@ -91,7 +98,12 @@ export default function ModerationPage() {
           {pending.map((q) => (
             <li key={q.id}>
               <Card className="space-y-3">
-                <div className="break-words text-ink">{q.canonicalText}</div>
+                <div className="space-y-1">
+                  <div className="break-words text-ink">{q.canonicalText}</div>
+                  {q.originatingCampaignPrompt && (
+                    <Stamp>Submitted via: {q.originatingCampaignPrompt}</Stamp>
+                  )}
+                </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Button
                     type="button"

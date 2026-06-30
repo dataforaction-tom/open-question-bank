@@ -1,6 +1,6 @@
 import { and, asc, eq } from 'drizzle-orm'
 import { db } from '@/db/client'
-import { moderationEvent, question } from '@/db/schema'
+import { campaign, moderationEvent, question } from '@/db/schema'
 import { assignToNearestCluster } from '@/lib/clustering'
 import { getProvider, type ReasoningProvider } from '@/lib/llm'
 import { isTheme } from '@/lib/themes'
@@ -9,8 +9,15 @@ import { getActiveWorkspaceId } from '@/lib/workspace'
 export async function listPending(limit = 50, workspaceId?: string) {
   const ws = workspaceId ?? (await getActiveWorkspaceId())
   return db
-    .select({ id: question.id, canonicalText: question.canonicalText, createdAt: question.createdAt })
+    .select({
+      id: question.id,
+      canonicalText: question.canonicalText,
+      createdAt: question.createdAt,
+      originatingCampaignId: question.originatingCampaignId,
+      originatingCampaignPrompt: campaign.prompt,
+    })
     .from(question)
+    .leftJoin(campaign, eq(question.originatingCampaignId, campaign.id))
     .where(and(eq(question.state, 'submitted'), eq(question.workspaceId, ws)))
     .orderBy(asc(question.createdAt))
     .limit(limit)

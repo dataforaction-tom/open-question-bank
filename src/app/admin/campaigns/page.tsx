@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { AdminShell } from '@/components/ui/AdminShell'
 import { Button, buttonClasses } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
-import { Label, Input } from '@/components/ui/Field'
+import { Label, Input, Select } from '@/components/ui/Field'
 import { Notice } from '@/components/ui/Notice'
 import { EmptyState } from '@/components/ui/EmptyState'
 
@@ -16,12 +16,29 @@ interface CampaignRow {
   state: string
 }
 
+// Curated presets for the judge-facing "Which is more ___?" comparison. The DB column stays
+// free-text (comparisonAxis), so "Other" falls back to a custom value rather than being enforced.
+const AXIS_PRESETS = [
+  { value: 'important', label: 'Importance', description: 'Which question matters most to address?' },
+  {
+    value: 'impactful',
+    label: 'Impact',
+    description: 'Which question, if answered, would change the most for people?',
+  },
+  { value: 'urgent', label: 'Urgency', description: 'Which question needs answering soonest?' },
+] as const
+const CUSTOM_AXIS = '__custom__'
+
 export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<CampaignRow[]>([])
   const [prompt, setPrompt] = useState('')
-  const [axis, setAxis] = useState('importance')
+  const [axisChoice, setAxisChoice] = useState<string>(AXIS_PRESETS[0].value)
+  const [customAxis, setCustomAxis] = useState('')
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
+
+  const axis = axisChoice === CUSTOM_AXIS ? customAxis.trim() : axisChoice
+  const selectedPreset = AXIS_PRESETS.find((p) => p.value === axisChoice)
 
   const load = useCallback(async () => {
     const res = await fetch('/api/admin/campaigns')
@@ -46,6 +63,8 @@ export default function CampaignsPage() {
       const data = await res.json()
       if (res.ok) {
         setPrompt('')
+        setAxisChoice(AXIS_PRESETS[0].value)
+        setCustomAxis('')
         await load()
       } else {
         setMessage(data.error ?? 'Error')
@@ -62,6 +81,7 @@ export default function CampaignsPage() {
       <div className="space-y-1">
         <p className="eyebrow">Prioritise</p>
         <h1 className="text-3xl">Campaigns</h1>
+        <p className="text-muted">Group ready questions into a set the public can compare and rank.</p>
       </div>
 
       {message && (
@@ -84,9 +104,32 @@ export default function CampaignsPage() {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="axis">Comparison axis</Label>
-            <Input id="axis" value={axis} onChange={(e) => setAxis(e.target.value)} required />
+            <Select
+              id="axis"
+              value={axisChoice}
+              onChange={(e) => setAxisChoice(e.target.value)}
+            >
+              {AXIS_PRESETS.map((p) => (
+                <option key={p.value} value={p.value}>
+                  {p.label}
+                </option>
+              ))}
+              <option value={CUSTOM_AXIS}>Other…</option>
+            </Select>
+            {axisChoice === CUSTOM_AXIS ? (
+              <Input
+                aria-label="Custom comparison axis"
+                placeholder="e.g. feasible"
+                value={customAxis}
+                onChange={(e) => setCustomAxis(e.target.value)}
+                required
+              />
+            ) : (
+              selectedPreset && <p className="text-sm text-muted">{selectedPreset.description}</p>
+            )}
+            {axis && <p className="text-sm text-muted">Judges will see: &ldquo;Which is more {axis}?&rdquo;</p>}
           </div>
-          <Button type="submit" disabled={busy}>
+          <Button type="submit" disabled={busy || !axis}>
             Create campaign
           </Button>
         </form>

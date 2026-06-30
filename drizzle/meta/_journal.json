@@ -71,6 +71,13 @@
       "when": 1782334472459,
       "tag": "0009_chubby_chamber",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1782850626062,
+      "tag": "0010_curvy_maria_hill",
+      "breakpoints": true
     }
   ]
 }

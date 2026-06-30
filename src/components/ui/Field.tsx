@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes, TextareaHTMLAttributes } from 'react'
+import type { InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react'
 
 // Sits on `surface` so inputs stay distinct from the page in both light and dark.
 // The moss focus ring comes from the global :focus-visible rule; the border warms
@@ -13,6 +13,10 @@ export function Input({ className = '', ...props }: InputHTMLAttributes<HTMLInpu
 
 export function Textarea({ className = '', ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return <textarea className={`${fieldBase} leading-relaxed ${className}`} {...props} />
+}
+
+export function Select({ className = '', ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
+  return <select className={`${fieldBase} ${className}`} {...props} />
 }
 
 // Small-caps field label, associated to a control via htmlFor.

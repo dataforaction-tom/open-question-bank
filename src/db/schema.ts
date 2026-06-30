@@ -86,6 +86,10 @@ export const datasetVersion = pgTable(
     embeddingDim: integer('embedding_dim').notNull(),
     dedupThreshold: doublePrecision('dedup_threshold').notNull().default(0.15),
     clusterThreshold: doublePrecision('cluster_threshold').notNull().default(0.2),
+    // Cosine-distance cutoff for the browsable "find similar" feature — deliberately looser than
+    // clusterThreshold (same-topic near-duplicates) since this is "topically related, distinct
+    // question." Default tuned against real nomic-embed-text distances on the demo corpus.
+    similarityThreshold: doublePrecision('similarity_threshold').notNull().default(0.42),
     isActive: boolean('is_active').notNull().default(true),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
