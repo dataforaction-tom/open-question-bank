@@ -1,0 +1,870 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../changelog/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>User Guide - Question Bank Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#user-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Question Bank Documentation" class="md-header__button md-logo" aria-label="Question Bank Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Question Bank Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              User Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Question Bank Documentation" class="md-nav__button md-logo" aria-label="Question Bank Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Question Bank Documentation
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#submitting-a-question" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Submitting a question
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#browsing-the-question-bank" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Browsing the question bank
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#campaigns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Campaigns
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#comparing-and-ranking-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Comparing and ranking questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ranked-agendas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ranked agendas
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#synthesised-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Synthesised questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#appearance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appearance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#admin-guide" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Admin guide
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Admin guide">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#moderation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Moderation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refinement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Refinement
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#curation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Curation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#campaigns_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Campaigns
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dashboard
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a-note-on-the-shared-admin-password" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A note on the shared admin password
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#submitting-a-question" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Submitting a question
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#browsing-the-question-bank" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Browsing the question bank
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#campaigns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Campaigns
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#comparing-and-ranking-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Comparing and ranking questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ranked-agendas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ranked agendas
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#synthesised-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Synthesised questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#appearance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appearance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#admin-guide" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Admin guide
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Admin guide">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#moderation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Moderation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refinement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Refinement
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#curation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Curation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#campaigns_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Campaigns
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dashboard
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a-note-on-the-shared-admin-password" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A note on the shared admin password
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="user-guide">User Guide</h1>
+<p>This guide covers everything you need to know about using Question Bank — both as a member of
+the public submitting and exploring questions, and as an admin running the question pipeline for
+an organisation or community.</p>
+<h2 id="submitting-a-question">Submitting a question</h2>
+<p>Go to <strong>Submit</strong> to add a question to the bank. You can submit:</p>
+<ul>
+<li><strong>Openly</strong>, into the general pool, or</li>
+<li><strong>Into a specific campaign</strong>, if you arrived via a campaign's own submit page — your question
+  carries a note of which campaign it came in through, but still has to go through the same
+  checks as everything else before it can join that campaign's comparison set.</li>
+</ul>
+<p>When you submit, the system checks whether something very similar already exists. If it finds a
+close match, you'll be asked: is this <strong>yours</strong> (the same question, maybe worded differently) or
+is it genuinely <strong>new</strong>? Choosing "yours" merges your submission into the existing question and
+quietly counts toward how much demand there is for it — choosing "new" adds it as its own entry.</p>
+<p>You can submit <strong>anonymously</strong> or <strong>publicly</strong> — either way, nobody outside the admin team can
+link a question back to who asked it, and even admins only ever see a non-identifying reference,
+never your name or contact details.</p>
+<p>After submitting, your question goes to <strong>moderation</strong> before it's visible to anyone else (see
+<a href="#admin-guide">Admin guide</a>).</p>
+<h2 id="browsing-the-question-bank">Browsing the question bank</h2>
+<p>The <strong>Browse</strong> page lets you search and explore every question that's been published. You can:</p>
+<ul>
+<li><strong>Search</strong> by keyword.</li>
+<li><strong>Filter by theme</strong> — questions are automatically grouped into broad topics (e.g. transport,
+  housing, environment) once they're approved.</li>
+<li><strong>See what's similar.</strong> Open any question and use "Find similar" to see closely related
+  questions already in the bank — handy for finding a fuller picture of a topic before you submit
+  something that might already exist.</li>
+<li><strong>See how many people raised the same thing.</strong> Where a question absorbed several near-identical
+  submissions, you'll see "N submissions merged here" — a visible signal of how much demand there
+  is behind it.</li>
+<li><strong>Explore the question map.</strong> A visual network of how published questions relate to one
+  another — questions on similar topics cluster together, sized by how much demand they've
+  attracted. Click any point to open that question; there's also a plain data table underneath for
+  anyone who prefers it or uses a screen reader.</li>
+</ul>
+<h2 id="campaigns">Campaigns</h2>
+<p>A <strong>campaign</strong> is a themed round of prioritisation — a focused question like <em>"Which community
+priorities should shape next year's budget?"</em> with its own set of candidate questions, judged
+against each other until a ranked list comes out the other end.</p>
+<p>Visit <strong>Campaigns</strong> to see what's running. A campaign moves through stages:</p>
+<ol>
+<li><strong>Open for submission</strong> (optional) — you can submit questions directly into this campaign.</li>
+<li><strong>Open for comparison</strong> — anyone can help rank the campaign's questions (see below).</li>
+<li><strong>Closed / Ranked</strong> — comparison has finished and a final ranked agenda is published.</li>
+</ol>
+<h2 id="comparing-and-ranking-questions">Comparing and ranking questions</h2>
+<p>Once a campaign is open for comparison, anyone can help rank its questions. Open the campaign and
+you'll be shown two questions at a time with a simple prompt — for example <em>"Which is more
+important?"</em> (the exact wording depends on what the campaign is comparing on: importance, impact,
+urgency, or something else the organisers chose). Pick the one you think matters more, and you'll
+be shown another pair.</p>
+<p>A few things worth knowing:</p>
+<ul>
+<li>You won't be shown the same pair twice.</li>
+<li>Your identity isn't recorded — just an anonymous browser fingerprint used only to stop the same
+  pair being repeated to you.</li>
+<li>The ranking updates after every single comparison, using a confidence-based ranking method (the
+  same family of algorithm used for ranking players in online games) — newer or less-compared
+  questions get prioritised for more comparisons until the overall ranking is confident.</li>
+</ul>
+<h2 id="ranked-agendas">Ranked agendas</h2>
+<p>Once a campaign closes, its final order is published as a <strong>ranked agenda</strong> — the question's
+position, plus the evidence behind it (how many comparisons it won, and how confident the ranking
+is). Nothing here exposes who submitted or who judged anything — it's the result, not the process.</p>
+<h2 id="synthesised-questions">Synthesised questions</h2>
+<p>For some closed campaigns, an AI assistant drafts <strong>synthesised questions</strong> — a single question
+that captures the heart of several closely related, highly-ranked questions. These are never
+published automatically: a human always reviews and explicitly endorses a synthesis before it
+appears publicly, and you can always see which original questions it drew from (its "lineage").</p>
+<h2 id="appearance">Appearance</h2>
+<p>Use the theme switcher in the header to choose how the site looks: <strong>Auto</strong> (follows your device's
+light/dark setting), <strong>Warm Civic</strong>, <strong>Warm Civic Dark</strong>, or <strong>Climate Barometer</strong> (a cooler,
+all-sans-serif look). Your choice is remembered on your device.</p>
+<hr />
+<h2 id="admin-guide">Admin guide</h2>
+<p>Admins log in at <strong>/admin/login</strong> with the shared admin password for this instance. Once logged
+in, the admin area walks through the pipeline a question travels from "just submitted" to
+"published and ranked," roughly in this order:</p>
+<p><strong>Moderation → Refinement → Curation → Campaigns</strong></p>
+<h3 id="moderation">Moderation</h3>
+<p>The <strong>Moderation</strong> queue lists every newly submitted question awaiting a decision. For each one
+you can:</p>
+<ul>
+<li><strong>Approve</strong> it — it's grouped with similar questions already in the bank (or starts a new group
+  if nothing matches), ready for the next steps.</li>
+<li><strong>Reject</strong> it, optionally with a reason.</li>
+</ul>
+<p>If a question was submitted through a specific campaign, you'll see a "Submitted via" note on its
+card so you know the context it came in with.</p>
+<h3 id="refinement">Refinement</h3>
+<p>The <strong>Refinement</strong> page is optional — use it any time before a question is marked ready. It asks
+an AI assistant to suggest clearer wording for a question (catching vague, unanswerable, or
+double-barrelled phrasing), shows you its reasoning, and lets you <strong>accept</strong> the suggestion as-is,
+<strong>edit</strong> it further, or <strong>reject</strong> it and keep the original wording. Every decision is recorded,
+so you can always see a question's full wording history.</p>
+<h3 id="curation">Curation</h3>
+<p>The <strong>Curation</strong> page is where you run a <strong>quality check</strong> and decide which questions are ready to
+be used in campaigns. The quality check scores a question against five criteria — is it specific,
+answerable, clearly scoped, neutrally worded, and asking just one thing — each with a short
+explanation. The check is advisory only: a low score doesn't block anything, the decision to mark
+a question <strong>ready</strong> is always yours.</p>
+<h3 id="campaigns_1">Campaigns</h3>
+<p>The <strong>Campaigns</strong> page is where you set up and run prioritisation rounds:</p>
+<ul>
+<li><strong>Create a campaign</strong> with a prompt (what you're asking) and a <strong>comparison axis</strong> — what judges
+  are actually comparing questions on. Choose from Importance, Impact, or Urgency (each with a
+  short explanation of what it means), or set your own with "Other." You'll see a live preview of
+  exactly what judges will be shown — <em>"Which is more ___?"</em></li>
+<li><strong>Assemble its question set</strong> from the ready (quality-checked) questions.</li>
+<li><strong>Open it for submission and/or comparison</strong>, and <strong>close it</strong> once enough comparisons have come
+  in — closing moves its questions to "ranked" and publishes the agenda.</li>
+<li>Review and <strong>endorse AI-drafted syntheses</strong> once a campaign is closed, if any were proposed.</li>
+</ul>
+<h3 id="dashboard">Dashboard</h3>
+<p>The <strong>Dashboard</strong> gives a quick overview of pipeline health: how many questions are at each stage,
+recent submission and comparison activity, quality-check distribution, the biggest groups of
+similar questions, and the question map.</p>
+<h3 id="a-note-on-the-shared-admin-password">A note on the shared admin password</h3>
+<p>This instance uses a single shared password for all admins rather than individual accounts — fine
+for a small trusted team, but worth knowing if you're handing this off to a larger group.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": [], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
